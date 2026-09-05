@@ -1,15 +1,30 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router';
 import { useAppStore } from '@/stores/app';
 import { useScrolled } from '@/lib/useScrolled';
 
-withDefaults(defineProps<{ title: string; settings?: boolean }>(), { settings: true });
+const props = withDefaults(
+  defineProps<{ title: string; settings?: boolean; back?: string }>(),
+  { settings: true },
+);
 
 const app = useAppStore();
+const router = useRouter();
 const scrolled = useScrolled(10);
+
+function goBack() {
+  if (props.back) router.push(props.back);
+  else router.back();
+}
 </script>
 
 <template>
   <header class="hdr" :data-collapsed="scrolled">
+    <button v-if="back !== undefined" class="hdr__back" aria-label="Back" @click="goBack">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
     <h1 class="hdr__title">{{ title }}</h1>
     <div class="hdr__actions">
       <slot name="actions" />
@@ -61,12 +76,31 @@ const scrolled = useScrolled(10);
   padding-bottom: var(--s-2);
   border-bottom-color: var(--c-border);
 }
+.hdr__back {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-left: -6px;
+  margin-right: var(--s-1);
+  border: none;
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--c-text);
+}
+.hdr__back:active {
+  background: var(--c-surface-2);
+}
 .hdr__title {
   margin: 0;
+  margin-right: auto;
   font-size: var(--t-screen);
   font-weight: 700;
   letter-spacing: -0.02em;
   transition: font-size var(--dur) var(--ease);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hdr[data-collapsed='true'] .hdr__title {
   font-size: var(--t-title);

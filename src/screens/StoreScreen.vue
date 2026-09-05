@@ -1,16 +1,142 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { dragAndDrop } from '@formkit/drag-and-drop/vue';
+import type { Area } from '@shared/types';
 import ScreenHeader from '@/components/ScreenHeader.vue';
+import PromptSheet from '@/components/PromptSheet.vue';
+import { useDataStore } from '@/stores/data';
+import {
+  areasForStore,
+  createArea,
+  deleteArea,
+  deleteStore,
+  reorderAreas,
+  updateArea,
+  updateStore,
+} from '@/lib/domain';
+import { showToast } from '@/lib/toast';
 
 const route = useRoute();
+const router = useRouter();
+const data = useDataStore();
+
+const storeId = computed(() => String(route.params.id));
+const store = computed(() => data.get('stores', storeId.value));
+const sortedAreas = computed(() => areasForStore(storeId.value));
+
+const dragParent = ref<HTMLElement>();
+const dragAreas = ref<Area[]>([...sortedAreas.value]);
+
+dragAndDrop<Area>({
+  parent: dragParent,
+  values: dragAreas,
+  longPress: true,
+  dragHandle: '.area__grip',
+});
+
+// keep the drag list in step with external changes (add / delete / sync)
+watch(sortedAreas, (fresh) => {
+  const a = fresh.map((x) => x.id).join(',');
+  const b = dragAreas.value.map((x) => x.id).join(',');
+  if (a !== b) dragAreas.value = [...fresh];
+});
+
+// persist a user reorder
+watch(dragAreas, (list) => {
+  const dragged = list.map((x) => x.id).join(',');
+  const persisted = sortedAreas.value.map((x) => x.id).join(',');
+  if (dragged !== persisted && list.length === sortedAreas.value.length) {
+    void reorderAreas(storeId.value, list.map((x) => x.id));
+  }
+});
+
+const addOpen = ref(false);
+const renameStoreOpen = ref(false);
+const renameArea = ref<Area | null>(null);
+
+async function onAddArea(name: string) {
+  await createArea(storeId.value, name);
+}
+async function onRenameStore(name: string) {
+  await updateStore(storeId.value, { name });
+}
+async function onRenameArea(name: string) {
+  if (renameArea.value) await updateArea(renameArea.value.id, { name });
+  renameArea.value = null;
+}
+async function onDeleteArea(area: Area) {
+  await deleteArea(area.id);
+  showToast(`Removed “${area.name}”`);
+}
+async function onDeleteStore() {
+  const name = store.value?.name ?? 'store';
+  router.push('/stores');
+  await deleteStore(storeId.value);
+  showToast(`Deleted ${name}`);
+}
 </script>
 
 <template>
   <div class="screen">
-    <ScreenHeader title="Store" />
-    <div class="screen__body">
-      <p class="placeholder">Store {{ route.params.id }} detail — coming in Phase 4.</p>
+    <ScreenHeader :title="store?.name ?? 'Store'" back="/stores">
+      <template #actions>
+        <button class="txt" @click="renameStoreOpen = true">Rename</button>
+      </template>
+    </ScreenHeader>
+
+    <div v-if="store" class="body">
+      <p class="hint">Drag aisles into the order you walk them. Items follow this path when you shop here.</p>
+
+      <div ref="dragParent" class="areas">
+        <div v-for="area in dragAreas" :key="area.id" class="area">
+          <button class="area__grip" aria-label="Reorder">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+            </svg>
+          </button>
+          <button class="area__name" @click="renameArea = area">{{ area.name }}</button>
+          <button class="area__del" aria-label="Delete area" @click="onDeleteArea(area)">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="add-area" @click="addOpen = true">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        </svg>
+        Add aisle
+      </button>
+
+      <button class="danger" @click="onDeleteStore">Delete store</button>
     </div>
+
+    <PromptSheet
+      v-model:open="addOpen"
+      title="Add aisle"
+      label="Aisle name"
+      placeholder="e.g. Produce"
+      submit-label="Add"
+      @submit="onAddArea"
+    />
+    <PromptSheet
+      v-model:open="renameStoreOpen"
+      title="Rename store"
+      :initial="store?.name"
+      submit-label="Save"
+      @submit="onRenameStore"
+    />
+    <PromptSheet
+      :open="renameArea !== null"
+      title="Rename aisle"
+      :initial="renameArea?.name"
+      submit-label="Save"
+      @update:open="(v) => { if (!v) renameArea = null; }"
+      @submit="onRenameArea"
+    />
   </div>
 </template>
 
@@ -20,10 +146,93 @@ const route = useRoute();
   flex-direction: column;
   min-height: 100%;
 }
-.screen__body {
-  padding: var(--s-4);
+.txt {
+  border: none;
+  background: none;
+  color: var(--c-accent);
+  font-weight: 600;
+  padding: var(--s-2);
 }
-.placeholder {
+.body {
+  padding: var(--s-2) var(--s-4) var(--s-6);
+}
+.hint {
   color: var(--c-text-dim);
+  font-size: var(--t-body-sm);
+  margin: 0 0 var(--s-4);
+}
+.areas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.area {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+}
+.area__grip {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 40px;
+  border: none;
+  background: none;
+  color: var(--c-text-faint);
+  cursor: grab;
+  touch-action: none;
+}
+.area__name {
+  flex: 1;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: var(--s-2) 0;
+  font-size: var(--t-body);
+}
+.area__del {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--c-text-faint);
+}
+.area__del:active {
+  background: var(--c-danger-soft);
+  color: var(--c-danger);
+}
+.add-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  width: 100%;
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  border: 1px dashed var(--c-border);
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--c-accent);
+  font-weight: 600;
+}
+.danger {
+  width: 100%;
+  margin-top: var(--s-6);
+  padding: var(--s-3);
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--c-danger-soft);
+  color: var(--c-danger);
+  font-weight: 600;
+}
+:deep(.dnd-dragging) {
+  opacity: 0.4;
 }
 </style>
