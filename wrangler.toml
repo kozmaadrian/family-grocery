@@ -1,10 +1,17 @@
 name = "family-grocery"
-main = "worker.js"
-compatibility_date = "2025-08-08"
+main = "worker/index.ts"
+compatibility_date = "2025-08-03"
 
-[vars]
-AUTH_SECRET = "REPLACE_WITH_RANDOM_SECRET"
+# The built SPA (Vite output) is served as static assets; the Worker handles /api/*.
+# In local dev the Vite server serves the app on :5173 and proxies /api to `wrangler dev`.
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
 
-kv_namespaces = [
-  { binding = "GROCERY_KV", id = "REPLACE_WITH_KV_ID" }
-]
+[[d1_databases]]
+binding = "DB"
+database_name = "family-grocery"
+database_id = "local-dev-placeholder"
+migrations_dir = "migrations"
+
+# AUTH_SECRET is supplied by .dev.vars locally and `wrangler secret put AUTH_SECRET` in production.
