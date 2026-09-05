@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useSyncStore } from '@/stores/sync';
 import { syncNow } from '@/lib/sync';
 import { showToast } from '@/lib/toast';
+import { usePwaInstall } from '@/lib/usePwaInstall';
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{ 'update:open': [value: boolean] }>();
@@ -13,6 +14,7 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>();
 const app = useAppStore();
 const auth = useAuthStore();
 const sync = useSyncStore();
+const { canInstall, promptInstall } = usePwaInstall();
 
 const themes: { value: ThemePref; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -72,6 +74,11 @@ async function resetLocal() {
         <span v-if="sync.pendingCount" class="row__badge">{{ sync.pendingCount }} pending</span>
         <button class="btn-ghost" @click="syncNow()">Sync now</button>
       </div>
+    </section>
+
+    <section v-if="canInstall" class="grp">
+      <h2 class="grp__label">Install</h2>
+      <button class="link" @click="promptInstall">Add to Home Screen</button>
     </section>
 
     <section class="grp">
