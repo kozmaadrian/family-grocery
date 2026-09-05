@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "typecheck": "vue-tsc -b --noEmit",
     "db:migrate:local": "wrangler d1 migrations apply family-grocery --local",
-    "db:migrate:remote": "wrangler d1 migrations apply family-grocery --remote"
+    "db:migrate:remote": "wrangler d1 migrations apply family-grocery --remote",
+    "seed": "node scripts/seed.mjs"
   },
   "dependencies": {
     "@formkit/drag-and-drop": "^0.5.1",
