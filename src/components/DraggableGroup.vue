@@ -4,10 +4,14 @@ import { dragAndDrop } from '@formkit/drag-and-drop/vue';
 import type { ShopItem } from '@/lib/shopping';
 import ShopRow from './ShopRow.vue';
 
-const props = defineProps<{ items: ShopItem[]; showStores?: boolean }>();
+const props = defineProps<{
+  items: ShopItem[];
+  showStores?: boolean;
+  collapseOnCheck?: boolean;
+}>();
 const emit = defineEmits<{
   reorder: [productIds: string[]];
-  toggle: [productId: string];
+  toggle: [productId: string, bought: boolean];
   remove: [productId: string, name: string];
   open: [productId: string];
 }>();
@@ -51,10 +55,11 @@ watch(list, (l) => {
       v-for="it in list"
       :key="it.need.id"
       :item="it"
-      :checked="false"
+      :checked="it.bought"
       :show-stores="showStores"
+      :collapse-on-check="collapseOnCheck"
       draggable-row
-      @toggle="emit('toggle', it.product.id)"
+      @toggle="emit('toggle', it.product.id, !it.bought)"
       @remove="emit('remove', it.product.id, it.product.name)"
       @open="emit('open', it.product.id)"
     />

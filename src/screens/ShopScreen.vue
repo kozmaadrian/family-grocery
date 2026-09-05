@@ -29,7 +29,8 @@ const shop = useShopStore();
 const storeId = computed(() =>
   shop.storeId && data.get('stores', shop.storeId) ? shop.storeId : '',
 );
-const view = useShoppingView(storeId);
+const showBought = computed(() => shop.showBought);
+const view = useShoppingView(storeId, showBought);
 
 const hasStores = computed(() => data.active('stores').length > 0);
 const currentStoreName = computed(() =>
@@ -39,7 +40,6 @@ const currentStoreName = computed(() =>
 const pickerOpen = ref(false);
 const itemOpen = ref(false);
 const itemProductId = ref<string | null>(null);
-const inCartOpen = ref(false);
 const notSoldOpen = ref(false);
 const finishOpen = ref(false);
 
@@ -100,7 +100,7 @@ const empty = computed(
   () =>
     view.value.groups.length === 0 &&
     view.value.notSoldHere.length === 0 &&
-    view.value.inCart.length === 0,
+    view.value.boughtCount === 0,
 );
 </script>
 
@@ -130,15 +130,23 @@ const empty = computed(
         <div
           class="progress__fill"
           :style="{
-            width: `${(view.inCart.length / Math.max(1, view.inCart.length + view.totalToBuy)) * 100}%`,
+            width: `${(view.boughtCount / Math.max(1, view.boughtCount + view.totalToBuy)) * 100}%`,
           }"
         />
         <span class="progress__label">
-          {{ view.inCart.length }} of {{ view.inCart.length + view.totalToBuy }} in cart
+          {{ view.boughtCount }} of {{ view.boughtCount + view.totalToBuy }} in cart
         </span>
       </div>
       <button class="finish" @click="finishOpen = true">Finish</button>
     </div>
+
+    <button
+      v-if="view.boughtCount > 0"
+      class="boughttoggle"
+      @click="shop.setShowBought(!shop.showBought)"
+    >
+      {{ shop.showBought ? 'Hide' : 'Show' }} {{ view.boughtCount }} bought
+    </button>
 
     <div class="body">
       <p v-if="empty" class="empty">
@@ -171,8 +179,9 @@ const empty = computed(
           <DraggableGroup
             v-if="storeId"
             :items="g.items"
+            :collapse-on-check="!shop.showBought"
             @reorder="reorderPlacements(storeId, g.key === 'unsorted' ? null : g.key, $event)"
-            @toggle="toggle($event, true)"
+            @toggle="(id, bought) => toggle(id, bought)"
             @remove="(id, name) => removeItem(id, name)"
             @open="openItem($event)"
           />
@@ -181,9 +190,10 @@ const empty = computed(
             v-else
             :key="it.need.id"
             :item="it"
-            :checked="false"
+            :checked="it.bought"
+            :collapse-on-check="!shop.showBought"
             show-stores
-            @toggle="toggle(it.product.id, true)"
+            @toggle="toggle(it.product.id, !it.bought)"
             @remove="removeItem(it.product.id, it.product.name)"
             @open="openItem(it.product.id)"
           />
@@ -203,30 +213,10 @@ const empty = computed(
             v-for="it in view.notSoldHere"
             :key="it.need.id"
             :item="it"
-            :checked="false"
+            :checked="it.bought"
+            :collapse-on-check="!shop.showBought"
             show-stores
-            @toggle="toggle(it.product.id, true)"
-            @remove="removeItem(it.product.id, it.product.name)"
-            @open="openItem(it.product.id)"
-          />
-        </template>
-      </section>
-
-      <section v-if="view.inCart.length" class="group">
-        <button class="group__head" @click="inCartOpen = !inCartOpen">
-          <svg class="group__chev" :class="{ 'is-collapsed': !inCartOpen }" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <span class="group__title">In cart</span>
-          <span class="group__count">{{ view.inCart.length }}</span>
-        </button>
-        <template v-if="inCartOpen">
-          <ShopRow
-            v-for="it in view.inCart"
-            :key="it.need.id"
-            :item="it"
-            :checked="true"
-            @toggle="toggle(it.product.id, false)"
+            @toggle="toggle(it.product.id, !it.bought)"
             @remove="removeItem(it.product.id, it.product.name)"
             @open="openItem(it.product.id)"
           />
@@ -293,6 +283,17 @@ const empty = computed(
   padding: var(--s-2) var(--s-4);
   background: var(--c-bg);
   border-bottom: 1px solid var(--c-border);
+}
+.boughttoggle {
+  display: block;
+  margin: var(--s-2) auto 0;
+  padding: 4px 12px;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-text-dim);
+  font-size: var(--t-caption);
+  font-weight: 600;
 }
 .progress {
   position: relative;

@@ -7,6 +7,7 @@ export interface ShopItem {
   need: Need;
   product: Product;
   placement?: Placement;
+  bought: boolean;
   /** stores (names) that carry this product — for "Any store" mode */
   storeNames: string[];
 }
@@ -20,14 +21,19 @@ export interface ShopGroup {
 export interface ShoppingView {
   groups: ShopGroup[];
   notSoldHere: ShopItem[];
-  inCart: ShopItem[];
+  /** in-cart items count (shown in the list only when `showBought`) */
+  boughtCount: number;
   coverage: { covered: number; total: number };
+  /** needed (not yet bought) items this store carries */
   totalToBuy: number;
 }
 
 const UNSORTED = 'unsorted';
 
-export function useShoppingView(storeId: ComputedRef<string>): ComputedRef<ShoppingView> {
+export function useShoppingView(
+  storeId: ComputedRef<string>,
+  showBought: ComputedRef<boolean>,
+): ComputedRef<ShoppingView> {
   const data = useDataStore();
 
   return computed(() => {
@@ -40,29 +46,37 @@ export function useShoppingView(storeId: ComputedRef<string>): ComputedRef<Shopp
         .filter((n): n is string => Boolean(n));
 
     const needs = data.active('needs').filter((n) => products.has(n.product_id));
+    const boughtCount = needs.filter((n) => n.status === 'in_cart').length;
+    // rows to place in the list: always the un-bought ones; bought ones only on request
+    const listable = needs.filter((n) => n.status === 'needed' || showBought.value);
     const needed = needs.filter((n) => n.status === 'needed');
-    const inCartNeeds = needs.filter((n) => n.status === 'in_cart');
 
     const toItem = (need: Need, placement?: Placement): ShopItem => ({
       need,
       placement,
+      bought: need.status === 'in_cart',
       product: products.get(need.product_id)!,
       storeNames: storeNamesByProduct(need.product_id),
     });
 
-    // "Any store" — one flat, name-sorted list.
+    // bought items sink below un-bought ones within a group
+    const byOrder = (a: ShopItem, b: ShopItem) =>
+      Number(a.bought) - Number(b.bought) ||
+      (a.placement?.position ?? 0) - (b.placement?.position ?? 0);
+
+    // "Any store" — one flat list.
     if (!storeId.value) {
-      const groups: ShopGroup[] = [];
-      const all = needed
+      const all = listable
         .map((n) => toItem(n))
-        .sort((a, b) => a.product.name.localeCompare(b.product.name));
-      if (all.length) groups.push({ key: 'all', title: 'To buy', items: all });
+        .sort(
+          (a, b) =>
+            Number(a.bought) - Number(b.bought) ||
+            a.product.name.localeCompare(b.product.name),
+        );
       return {
-        groups,
+        groups: all.length ? [{ key: 'all', title: 'To buy', items: all }] : [],
         notSoldHere: [],
-        inCart: inCartNeeds
-          .map((n) => toItem(n))
-          .sort((a, b) => a.product.name.localeCompare(b.product.name)),
+        boughtCount,
         coverage: { covered: needed.length, total: needed.length },
         totalToBuy: needed.length,
       };
@@ -75,20 +89,20 @@ export function useShoppingView(storeId: ComputedRef<string>): ComputedRef<Shopp
 
     const groups: ShopGroup[] = [];
     for (const area of areas) {
-      const items = needed
+      const items = listable
         .filter((n) => placementByProduct.get(n.product_id)?.area_id === area.id)
         .map((n) => toItem(n, placementByProduct.get(n.product_id)))
-        .sort((a, b) => (a.placement?.position ?? 0) - (b.placement?.position ?? 0));
+        .sort(byOrder);
       if (items.length) groups.push({ key: area.id, title: area.name, items });
     }
 
-    const unsorted = needed
+    const unsorted = listable
       .filter((n) => {
         const p = placementByProduct.get(n.product_id);
         return p && p.area_id === null;
       })
       .map((n) => toItem(n, placementByProduct.get(n.product_id)))
-      .sort((a, b) => (a.placement?.position ?? 0) - (b.placement?.position ?? 0));
+      .sort(byOrder);
     if (unsorted.length) groups.push({ key: UNSORTED, title: 'Unsorted', items: unsorted });
 
     const notSoldHere = needed
@@ -96,15 +110,11 @@ export function useShoppingView(storeId: ComputedRef<string>): ComputedRef<Shopp
       .map((n) => toItem(n))
       .sort((a, b) => a.product.name.localeCompare(b.product.name));
 
-    const inCart = inCartNeeds
-      .map((n) => toItem(n, placementByProduct.get(n.product_id)))
-      .sort((a, b) => a.product.name.localeCompare(b.product.name));
-
     const covered = needed.length - notSoldHere.length;
     return {
       groups,
       notSoldHere,
-      inCart,
+      boughtCount,
       coverage: { covered, total: needed.length },
       totalToBuy: covered,
     };

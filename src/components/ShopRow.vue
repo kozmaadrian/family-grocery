@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { ShopItem } from '@/lib/shopping';
 import CheckCircle from './CheckCircle.vue';
 
@@ -8,12 +8,43 @@ const props = defineProps<{
   checked: boolean;
   showStores?: boolean;
   draggableRow?: boolean;
+  /** play a collapse-out animation when checked (bought items are hidden) */
+  collapseOnCheck?: boolean;
 }>();
 const emit = defineEmits<{ toggle: []; remove: []; open: [] }>();
 
 // per-trip value wins, else the product's default
 const qty = computed(() => props.item.need.qty || props.item.product.default_qty || '');
 const note = computed(() => props.item.need.note || props.item.product.note || '');
+
+// check-off animation: fill + strike, then (optionally) collapse away
+type Phase = 'idle' | 'checking' | 'leaving';
+const phase = ref<Phase>('idle');
+const shownChecked = computed(() => props.checked || phase.value !== 'idle');
+
+watch(
+  () => props.item.need.id,
+  () => {
+    phase.value = 'idle';
+  },
+);
+
+function onCheck() {
+  if (props.checked || phase.value !== 'idle') {
+    emit('toggle'); // un-checking is immediate
+    return;
+  }
+  phase.value = 'checking';
+  setTimeout(() => {
+    if (props.collapseOnCheck) {
+      phase.value = 'leaving';
+      setTimeout(() => emit('toggle'), 240);
+    } else {
+      emit('toggle');
+      phase.value = 'idle';
+    }
+  }, 220);
+}
 
 const dx = ref(0);
 const swiping = ref(false);
@@ -50,8 +81,6 @@ function onPressStart() {
 function onPressEnd() {
   if (pressTimer) clearTimeout(pressTimer);
 }
-
-void props;
 </script>
 
 <template>
@@ -59,19 +88,20 @@ void props;
     <div v-if="dx < 0" class="wrap__bg"><span>Remove</span></div>
     <div
       class="row"
+      :class="{ 'is-leaving': phase === 'leaving' }"
       :style="{ transform: dx ? `translateX(${dx}px)` : undefined, transition: swiping ? 'none' : undefined }"
       @touchstart.passive="onPressStart"
       @touchend="onPressEnd"
       @touchmove.passive="onPressEnd"
     >
       <CheckCircle
-        :checked="checked"
+        :checked="shownChecked"
         :label="checked ? `Move ${item.product.name} back to list` : `Put ${item.product.name} in cart`"
-        @toggle="emit('toggle')"
+        @toggle="onCheck"
       />
 
       <button class="row__body" @click="emit('open')">
-        <span class="row__name" :class="{ 'is-done': checked }">{{ item.product.name }}</span>
+        <span class="row__name" :class="{ 'is-done': shownChecked }">{{ item.product.name }}</span>
         <span v-if="showStores && item.storeNames.length" class="row__sub">
           <span v-for="s in item.storeNames" :key="s" class="chip">{{ s }}</span>
         </span>
@@ -117,6 +147,21 @@ void props;
   min-height: 56px;
   background: var(--c-bg);
   border-bottom: 1px solid var(--c-border);
+  overflow: hidden;
+  transition:
+    min-height 0.24s var(--ease),
+    padding 0.24s var(--ease),
+    opacity 0.24s var(--ease),
+    transform 0.24s var(--ease);
+}
+.row.is-leaving {
+  min-height: 0;
+  height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  transform: translateX(-16px);
+  pointer-events: none;
 }
 .row__body {
   flex: 1;
