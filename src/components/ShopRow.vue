@@ -72,14 +72,15 @@ void props;
 
       <button class="row__body" @click="emit('open')">
         <span class="row__name" :class="{ 'is-done': checked }">{{ item.product.name }}</span>
-        <span v-if="qty || note || (showStores && item.storeNames.length)" class="row__sub">
-          <span v-if="qty" class="row__qty">{{ qty }}</span>
-          <span v-if="note">{{ note }}</span>
-          <template v-if="showStores">
-            <span v-for="s in item.storeNames" :key="s" class="chip">{{ s }}</span>
-          </template>
+        <span v-if="showStores && item.storeNames.length" class="row__sub">
+          <span v-for="s in item.storeNames" :key="s" class="chip">{{ s }}</span>
         </span>
       </button>
+
+      <div v-if="qty || note" class="row__aside">
+        <span v-if="qty" class="row__qty">{{ qty }}</span>
+        <span v-if="note" class="row__note">{{ note }}</span>
+      </div>
 
       <button v-if="draggableRow" class="row__grip" aria-label="Reorder" @click.stop>
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -143,9 +144,27 @@ void props;
   font-size: var(--t-caption);
   color: var(--c-text-dim);
 }
+.row__aside {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  max-width: 42%;
+  text-align: right;
+}
 .row__qty {
   font-weight: 700;
+  font-size: var(--t-body-sm);
   color: var(--c-text);
+}
+.row__note {
+  font-size: var(--t-caption);
+  color: var(--c-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .row__grip {
   flex: none;

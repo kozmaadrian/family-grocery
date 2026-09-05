@@ -59,17 +59,17 @@ function openEdit(id: string) {
         />
         <button class="row__main" @click="openEdit(p.id)">
           <span class="row__name" :class="{ 'is-on': isNeeded(p.id) }">{{ p.name }}</span>
-          <span
-            v-if="p.default_qty || p.note || storesForProduct(p.id).length"
-            class="row__meta"
-          >
-            <span v-if="p.default_qty" class="row__qty">{{ p.default_qty }}</span>
-            <span v-if="p.note" class="row__note">{{ p.note }}</span>
+          <span v-if="storesForProduct(p.id).length" class="row__meta">
             <span v-for="sid in storesForProduct(p.id)" :key="sid" class="chip">
               {{ storeName(sid) }}
             </span>
           </span>
         </button>
+
+        <div v-if="p.default_qty || p.note" class="row__aside">
+          <span v-if="p.default_qty" class="row__qty">{{ p.default_qty }}</span>
+          <span v-if="p.note" class="row__note">{{ p.note }}</span>
+        </div>
       </div>
     </div>
 
@@ -156,8 +156,26 @@ function openEdit(id: string) {
   padding: 1px 8px;
   border-radius: var(--r-full);
 }
-.row__qty,
+.row__aside {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  max-width: 42%;
+  text-align: right;
+}
+.row__qty {
+  font-weight: 700;
+  font-size: var(--t-body-sm);
+  color: var(--c-text);
+}
 .row__note {
-  color: var(--c-text-faint);
+  font-size: var(--t-caption);
+  color: var(--c-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 </style>
