@@ -114,8 +114,8 @@ function openEdit(id: string) {
         </button>
 
         <div v-if="p.default_qty || p.note" class="row__aside">
-          <span v-if="p.default_qty" class="row__qty">{{ p.default_qty }}</span>
           <span v-if="p.note" class="row__note">{{ p.note }}</span>
+          <span v-if="p.default_qty" class="row__qty">×&nbsp;{{ p.default_qty }}</span>
         </div>
       </div>
     </div>
@@ -244,14 +244,19 @@ function openEdit(id: string) {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
-  max-width: 42%;
+  gap: 4px;
+  max-width: 44%;
   text-align: right;
 }
 .row__qty {
-  font-weight: 700;
-  font-size: var(--t-body-sm);
-  color: var(--c-text);
+  flex: none;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-text-dim);
+  font-size: var(--t-caption);
+  font-weight: 600;
+  white-space: nowrap;
 }
 .row__note {
   font-size: var(--t-caption);

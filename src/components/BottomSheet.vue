@@ -91,17 +91,17 @@ function onTouchEnd() {
 }
 .sheet {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: var(--s-2);
+  right: var(--s-2);
+  bottom: calc(var(--safe-b) + var(--s-2));
   z-index: 41;
   display: flex;
   flex-direction: column;
-  max-height: 92dvh;
+  max-height: 88dvh;
   background: var(--c-surface);
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  border-radius: var(--r-lg);
   box-shadow: var(--e-2);
-  padding-bottom: var(--safe-b);
+  padding-bottom: var(--s-1);
   animation: slide-up var(--dur) var(--ease);
 }
 .sheet__grip {
@@ -152,7 +152,7 @@ function onTouchEnd() {
 }
 @keyframes slide-up {
   from {
-    transform: translateY(100%);
+    transform: translateY(calc(100% + var(--s-2)));
   }
 }
 </style>

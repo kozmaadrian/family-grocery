@@ -11,12 +11,19 @@ const emit = defineEmits<{ toggle: [] }>();
     :aria-label="label"
     @click.stop="emit('toggle')"
   >
-    <svg v-if="checked" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+    <svg
+      v-if="checked"
+      class="check__tick"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
       <path
-        d="M5 12l4 4L19 7"
+        d="M5 13l4.2 4.2L19 7.5"
         fill="none"
         stroke="currentColor"
-        stroke-width="2.6"
+        stroke-width="2.4"
         stroke-linecap="round"
         stroke-linejoin="round"
       />
@@ -31,6 +38,7 @@ const emit = defineEmits<{ toggle: [] }>();
   place-items: center;
   width: 28px;
   height: 28px;
+  padding: 0;
   border: 2px solid var(--c-border);
   border-radius: var(--r-full);
   background: var(--c-surface);
@@ -39,6 +47,11 @@ const emit = defineEmits<{ toggle: [] }>();
     background var(--dur) var(--ease),
     border-color var(--dur) var(--ease),
     transform var(--dur) var(--ease);
+}
+.check__tick {
+  display: block;
+  /* optical centring — a checkmark reads slightly low-left of geometric centre */
+  transform: translate(0.5px, -0.5px);
 }
 .check.is-on {
   background: var(--c-accent);

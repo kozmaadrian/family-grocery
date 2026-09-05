@@ -107,8 +107,10 @@ function onPressEnd() {
       </button>
 
       <div v-if="qty || note" class="row__aside">
-        <span v-if="qty" class="row__qty">{{ qty }}</span>
         <span v-if="note" class="row__note">{{ note }}</span>
+        <span v-if="qty" class="row__qty" :class="{ 'is-done': shownChecked }">
+          ×&nbsp;{{ qty }}
+        </span>
       </div>
     </div>
   </div>
@@ -187,14 +189,23 @@ function onPressEnd() {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
-  max-width: 42%;
+  gap: 4px;
+  max-width: 44%;
   text-align: right;
 }
 .row__qty {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-size: var(--t-caption);
   font-weight: 700;
-  font-size: var(--t-body-sm);
-  color: var(--c-text);
+  white-space: nowrap;
+}
+.row__qty.is-done {
+  background: var(--c-surface-2);
+  color: var(--c-text-faint);
 }
 .row__note {
   font-size: var(--t-caption);

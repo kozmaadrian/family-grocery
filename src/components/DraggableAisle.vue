@@ -54,7 +54,7 @@ watch(list, (l) => {
         <span class="arr__name" :class="{ 'is-on': it.needed }">{{ it.product.name }}</span>
         <span v-if="it.product.note" class="arr__note">{{ it.product.note }}</span>
       </button>
-      <span v-if="it.product.default_qty" class="arr__qty">{{ it.product.default_qty }}</span>
+      <span v-if="it.product.default_qty" class="arr__qty">×&nbsp;{{ it.product.default_qty }}</span>
       <button class="arr__grip" aria-label="Reorder" @click.stop>
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
@@ -98,8 +98,13 @@ watch(list, (l) => {
 }
 .arr__qty {
   flex: none;
-  font-weight: 700;
-  font-size: var(--t-body-sm);
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-text-dim);
+  font-size: var(--t-caption);
+  font-weight: 600;
+  white-space: nowrap;
 }
 .arr__grip {
   flex: none;

@@ -128,26 +128,26 @@ async function remove() {
     :title="isNew ? 'New product' : 'Edit product'"
     @update:open="emit('update:open', $event)"
   >
-    <div class="field">
-      <label class="field__label">Name</label>
-      <input
-        v-model="form.name"
-        class="field__input"
-        placeholder="e.g. Oat milk"
-        enterkeyhint="done"
-        @keydown.enter="isNew && add()"
-      />
+    <div class="field field--name">
+      <div class="field__grow">
+        <label class="field__label">Name</label>
+        <input
+          v-model="form.name"
+          class="field__input"
+          placeholder="e.g. Oat milk"
+          enterkeyhint="done"
+          @keydown.enter="isNew && add()"
+        />
+      </div>
+      <div class="field__qty">
+        <label class="field__label">Qty</label>
+        <input v-model="form.qty" class="field__input" placeholder="1" inputmode="text" />
+      </div>
     </div>
 
-    <div class="field field--split">
-      <div>
-        <label class="field__label">Quantity</label>
-        <input v-model="form.qty" class="field__input" placeholder="1" />
-      </div>
-      <div>
-        <label class="field__label">Note</label>
-        <input v-model="form.note" class="field__input" placeholder="the big one" />
-      </div>
+    <div class="field">
+      <label class="field__label">Note</label>
+      <input v-model="form.note" class="field__input" placeholder="the big one, on offer, …" />
     </div>
 
     <template v-if="isNew">
@@ -198,10 +198,17 @@ async function remove() {
 .field {
   margin-bottom: var(--s-4);
 }
-.field--split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.field--name {
+  display: flex;
   gap: var(--s-3);
+}
+.field__grow {
+  flex: 1;
+  min-width: 0;
+}
+.field__qty {
+  flex: none;
+  width: 84px;
 }
 .field__label {
   display: block;

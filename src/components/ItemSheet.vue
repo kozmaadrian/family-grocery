@@ -74,13 +74,13 @@ async function removeFromList() {
     @update:open="emit('update:open', $event)"
   >
     <div class="split">
-      <div>
-        <label class="lbl">Quantity</label>
+      <div class="split__qty">
+        <label class="lbl">Qty</label>
         <input v-model="form.qty" class="inp" placeholder="1" />
       </div>
-      <div>
+      <div class="split__grow">
         <label class="lbl">Note</label>
-        <input v-model="form.note" class="inp" placeholder="the big one" />
+        <input v-model="form.note" class="inp" placeholder="the big one, on offer, …" />
       </div>
     </div>
 
@@ -98,10 +98,17 @@ async function removeFromList() {
 
 <style scoped>
 .split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: var(--s-3);
   margin-bottom: var(--s-4);
+}
+.split__qty {
+  flex: none;
+  width: 84px;
+}
+.split__grow {
+  flex: 1;
+  min-width: 0;
 }
 .lbl {
   display: block;
