@@ -63,6 +63,7 @@ void props;
         class="row__check"
         :class="{ 'is-on': checked }"
         :aria-pressed="checked"
+        :aria-label="checked ? `Move ${item.product.name} back to list` : `Put ${item.product.name} in cart`"
         @click="emit('toggle')"
       >
         <svg v-if="checked" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">

@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppStore } from '@/stores/app';
+import { useSyncStore } from '@/stores/sync';
+import { syncNow } from '@/lib/sync';
 import { useScrolled } from '@/lib/useScrolled';
 
 const props = withDefaults(
@@ -9,8 +12,17 @@ const props = withDefaults(
 );
 
 const app = useAppStore();
+const sync = useSyncStore();
 const router = useRouter();
 const scrolled = useScrolled(10);
+
+const syncBadge = computed(() => {
+  if (sync.status === 'syncing') return { text: 'Syncing…', kind: 'busy' };
+  if (sync.status === 'offline') return { text: 'Offline', kind: 'warn' };
+  if (sync.status === 'error') return { text: 'Sync failed — retry', kind: 'warn' };
+  if (sync.pendingCount > 0) return { text: `${sync.pendingCount} to sync`, kind: 'busy' };
+  return null;
+});
 
 function goBack() {
   if (props.back) router.push(props.back);
@@ -27,6 +39,14 @@ function goBack() {
     </button>
     <h1 class="hdr__title">{{ title }}</h1>
     <div class="hdr__actions">
+      <button
+        v-if="syncBadge"
+        class="hdr__sync"
+        :data-kind="syncBadge.kind"
+        @click="syncNow()"
+      >
+        {{ syncBadge.text }}
+      </button>
       <slot name="actions" />
       <button
         v-if="settings"
@@ -109,6 +129,19 @@ function goBack() {
   display: flex;
   align-items: center;
   gap: var(--s-2);
+}
+.hdr__sync {
+  border: none;
+  border-radius: var(--r-full);
+  padding: 4px 10px;
+  font-size: var(--t-caption);
+  font-weight: 600;
+  background: var(--c-surface-2);
+  color: var(--c-text-dim);
+}
+.hdr__sync[data-kind='warn'] {
+  background: var(--c-danger-soft);
+  color: var(--c-danger);
 }
 .hdr__gear {
   display: grid;

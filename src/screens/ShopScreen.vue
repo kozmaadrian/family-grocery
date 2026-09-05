@@ -23,9 +23,13 @@ import { showToast } from '@/lib/toast';
 const data = useDataStore();
 const shop = useShopStore();
 
-const storeId = computed(() => shop.storeId);
+// fall back to "Any store" if the selected store was deleted
+const storeId = computed(() =>
+  shop.storeId && data.get('stores', shop.storeId) ? shop.storeId : '',
+);
 const view = useShoppingView(storeId);
 
+const hasStores = computed(() => data.active('stores').length > 0);
 const currentStoreName = computed(() =>
   storeId.value ? (data.get('stores', storeId.value)?.name ?? 'Store') : 'Any store',
 );
@@ -107,8 +111,14 @@ const empty = computed(
 
     <div class="body">
       <p v-if="empty" class="empty">
-        Nothing to buy{{ storeId ? ' here' : '' }} yet.<br />
-        Add items below, or tick products on the Products tab.
+        <template v-if="!hasStores">
+          Add the stores you shop at (Stores tab) to get an aisle-by-aisle list.<br />
+          For now, just add what you need below.
+        </template>
+        <template v-else>
+          Nothing to buy{{ storeId ? ' here' : '' }} yet.<br />
+          Add items below, or tick products on the Products tab.
+        </template>
       </p>
 
       <section v-for="g in view.groups" :key="g.key" class="group">

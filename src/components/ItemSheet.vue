@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 import BottomSheet from './BottomSheet.vue';
 import { useDataStore } from '@/stores/data';
 import { needId } from '@/lib/ids';
@@ -23,12 +23,16 @@ const currentArea = computed(() => {
 });
 
 const form = reactive({ qty: '', note: '' });
+const hydrating = ref(false);
 watch(
   () => [props.open, props.productId] as const,
-  ([open]) => {
+  async ([open]) => {
     if (!open) return;
+    hydrating.value = true;
     form.qty = need.value?.qty ?? '';
     form.note = need.value?.note ?? '';
+    await nextTick();
+    hydrating.value = false;
   },
   { immediate: true },
 );
@@ -37,7 +41,7 @@ let t: ReturnType<typeof setTimeout> | null = null;
 watch(
   () => ({ ...form }),
   (f) => {
-    if (!props.open || !props.productId) return;
+    if (!props.open || !props.productId || hydrating.value) return;
     if (t) clearTimeout(t);
     t = setTimeout(() => {
       void updateNeed(props.productId!, {
