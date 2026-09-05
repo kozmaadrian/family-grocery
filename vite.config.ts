@@ -10,7 +10,7 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      injectRegister: false, // registered manually in src/main.ts (with a catch)
       manifest: false, // using public/manifest.webmanifest
       includeAssets: ['manifest.webmanifest', 'icons/*.png'],
       workbox: {

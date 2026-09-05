@@ -5,8 +5,9 @@ list of **products**, mark which ones you currently **need**, then shop one
 **store** at a time following a checklist ordered to match your physical path
 through that store.
 
-Status: this document specifies a **complete rewrite** of the current draft. The
-existing `worker.js` / `public/index.html` / KV setup are replaced.
+Status: **implemented** on branch `rewrite-mobile-first` (Phases 0–8). The old
+`worker.js` / single-file frontend / KV setup have been replaced. Phase 9 (deploy)
+is run by the maintainer against their Cloudflare account — see the README.
 
 ---
 
@@ -484,15 +485,15 @@ Each phase is independently testable. The app is fully usable after Phase 6;
 Phases 7–9 make it installable and production-ready. Detailed task lists are
 drawn up at the start of each phase.
 
-| Phase | Deliverable |
-|---|---|
-| **0 — Setup** | Vite + Vue 3 + TS scaffold; Pinia + vue-router wired; `wrangler.toml` with `[assets]` + D1 binding; local dev loop (`wrangler dev`, local D1); lint/format. |
-| **1 — Backend** | D1 schema + migrations; `/api/setup`, `/api/auth`, `/api/health`; `/api/sync` (push + pull, LWW, server clock, tombstones); tests for merge semantics. |
-| **2 — Client data layer** | IndexedDB schema via `idb`; repository API (typed CRUD, every write stamps `updated_at` + marks dirty); sync engine (push dirty / pull since cursor / merge); triggers (launch, focus, online, debounce); offline pending-count. |
-| **3 — App shell** | vue-router + bottom tab bar; safe-area layout; theme tokens + light/dark + override; header-collapse; toast system with Undo; reusable bottom-sheet component; Login screen + token flow. |
-| **4 — Products & Stores** | Products list + search + Product sheet (name/qty/note, buy-at toggles, per-store area); Stores list + Store screen with area CRUD and **drag-to-reorder**. |
-| **5 — Shop screen** | Store switcher + coverage badges; grouped ordered checklist; collapsible areas; progress; check-off → In-cart; Finish shopping + undo; quick-add bar with `visualViewport` tracking + autocomplete; swipe-to-remove; Item sheet; Not-sold-here section. |
-| **6 — Reordering** | Drag-to-reorder within/across areas on the Shop screen; fractional positions; renormalization; haptics; edge auto-scroll. |
-| **7 — PWA** | Manifest + icons; service worker (precache shell, runtime rules, versioned caches); iOS meta; install hint in Settings. |
-| **8 — Polish & QA** | Empty/error states; reduced-motion; a11y pass (focus, labels, contrast); real-device testing (iOS Safari, Android Chrome); performance; seed/demo data. |
-| **9 — Deploy** | Create prod D1; run migrations; set `AUTH_SECRET`; deploy; run `/api/setup`; smoke-test on a phone. |
+| Phase | Deliverable | Status |
+|---|---|---|
+| **0 — Setup** | Vite + Vue 3 + TS scaffold; Pinia + vue-router; `wrangler.toml` with `[assets]` + D1; local dev loop; Prettier/EditorConfig. | ✅ |
+| **1 — Backend** | D1 schema + migrations; `/api/setup`, `/api/auth`, `/api/health`; `/api/sync` (push + pull, LWW on client clock, tombstones); 10 Vitest tests on the real Worker + D1. | ✅ |
+| **2 — Client data layer** | IndexedDB mirror via `idb`; repo (typed CRUD, dirty queue); sync engine (push queued / pull since cursor / merge, settle against server ts); triggers launch/focus/online/debounce; pending count. | ✅ |
+| **3 — App shell** | vue-router + bottom tab bar; safe-area layout; theme tokens + light/dark + override; header scroll-collapse; toast system with Undo; Reka UI bottom sheet; Login screen + token flow. | ✅ |
+| **4 — Products & Stores** | Products list + search + Product sheet (name/qty/note autosave, buy-at toggles, per-store aisle); Stores list; Store screen with aisle CRUD + long-press **drag-to-reorder**. | ✅ |
+| **5 — Shop screen** | Store switcher + coverage; aisle-grouped ordered checklist; collapsible groups; progress; check-off → In cart; Finish shopping + undo; quick-add bar (VisualViewport + autocomplete); swipe-to-remove; Item sheet; Not-sold-here. | ✅ |
+| **6 — Reordering** | Per-aisle long-press drag-to-reorder on Shop, persisted to `placement.position`. Cross-aisle drag deferred — the item sheet's aisle picker covers it. | ✅ |
+| **7 — PWA** | `vite-plugin-pwa` (Workbox generateSW): precache shell, SPA fallback, `/api/*` NetworkOnly, autoUpdate; manifest + 192/512/maskable icons; iOS meta; install hint in Settings. | ✅ |
+| **8 — Polish & QA** | Global sync/offline status chip; deleted-store fallback; distinct empty states; hydration-guarded autosave; aria labels; light/dark verified. | ✅ |
+| **9 — Deploy** | Create prod D1, run migrations, set `AUTH_SECRET`, `wrangler deploy`, run `/api/setup`. Maintainer-run — see README. | ⬜ |
