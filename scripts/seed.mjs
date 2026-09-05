@@ -85,34 +85,33 @@ const needs = [
   need('prod_candles'), // not sold at either store — shows under "Not sold here"
 ];
 
+async function post(path, body, headers = { 'content-type': 'application/json' }) {
+  try {
+    return await fetch(`${API}${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
+  } catch {
+    console.error(`\nCan't reach the API at ${API}.`);
+    console.error('Start it first in another terminal:  npm run dev');
+    console.error('(wait for "Ready on http://localhost:8787", then re-run this)\n');
+    process.exit(1);
+  }
+}
+
 async function main() {
   // ensure a password exists, then get a token
-  let res = await fetch(`${API}/api/setup`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ password: PASSWORD }),
-  });
+  let res = await post('/api/setup', { password: PASSWORD });
   if (res.status === 409) {
-    res = await fetch(`${API}/api/auth`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ password: PASSWORD }),
-    });
+    res = await post('/api/auth', { password: PASSWORD });
   }
   if (!res.ok) {
     console.error(`auth failed (${res.status}):`, await res.text());
-    console.error('Is `npm run dev` running? Is the password right?');
+    console.error('Wrong password? Pass it as an argument:  npm run seed -- <password>');
     process.exit(1);
   }
   const { token } = await res.json();
   const auth = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
 
   if (FRESH) {
-    const cur = await fetch(`${API}/api/sync`, {
-      method: 'POST',
-      headers: auth,
-      body: JSON.stringify({ cursor: 0, changes: {} }),
-    }).then((r) => r.json());
+    const cur = await (await post('/api/sync', { cursor: 0, changes: {} }, auth)).json();
     const kill = {};
     for (const [table, rows] of Object.entries(cur.changes ?? {})) {
       kill[table] = rows
@@ -121,11 +120,7 @@ async function main() {
     }
     const total = Object.values(kill).reduce((n, r) => n + r.length, 0);
     if (total) {
-      const killed = await fetch(`${API}/api/sync`, {
-        method: 'POST',
-        headers: auth,
-        body: JSON.stringify({ cursor: 0, changes: kill }),
-      }).then((r) => r.json());
+      const killed = await (await post('/api/sync', { cursor: 0, changes: kill }, auth)).json();
       // seed rows must be newer than the server-stamped tombstones
       stamp = (killed.cursor ?? Date.now()) + 1;
       console.log(`--fresh: cleared ${total} existing rows.`);
@@ -133,10 +128,9 @@ async function main() {
   }
 
   const restamp = (rows) => rows.map((r) => ({ ...r, updated_at: stamp }));
-  const sync = await fetch(`${API}/api/sync`, {
-    method: 'POST',
-    headers: auth,
-    body: JSON.stringify({
+  const sync = await post(
+    '/api/sync',
+    {
       cursor: 0,
       changes: {
         stores: restamp(stores),
@@ -145,8 +139,9 @@ async function main() {
         placements: restamp(placements),
         needs: restamp(needs),
       },
-    }),
-  });
+    },
+    auth,
+  );
   if (!sync.ok) {
     console.error(`sync failed (${sync.status}):`, await sync.text());
     process.exit(1);
