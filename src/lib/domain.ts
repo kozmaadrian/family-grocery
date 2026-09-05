@@ -94,6 +94,25 @@ export async function updateNeed(
   await data().upsert('needs', { ...cur, ...patch });
 }
 
+/** Clear every in-cart item off the list. Returns the product ids removed (for undo). */
+export async function finishShopping(): Promise<string[]> {
+  const d = data();
+  const done = d.active('needs').filter((n) => n.status === 'in_cart');
+  if (done.length === 0) return [];
+  await commit(done.map((n) => ({ table: 'needs', row: { ...n, deleted: 1 } })));
+  return done.map((n) => n.product_id);
+}
+
+export async function restoreNeeds(productIds: string[]): Promise<void> {
+  const d = data();
+  const refs: Ref[] = [];
+  for (const pid of productIds) {
+    const n = d.get('needs', needId(pid));
+    if (n) refs.push({ table: 'needs', row: { ...n, deleted: 0 } });
+  }
+  if (refs.length) await commit(refs);
+}
+
 /* ---------- stores ---------- */
 
 export async function createStore(name: string): Promise<string> {
