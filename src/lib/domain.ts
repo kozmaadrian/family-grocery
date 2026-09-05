@@ -231,3 +231,20 @@ export async function removePlacement(productId: string, storeId: string): Promi
   const cur = data().get('placements', placementId(productId, storeId));
   if (cur && !cur.deleted) await data().upsert('placements', { ...cur, deleted: 1 });
 }
+
+/** Renumber the placements of one aisle (areaId null = Unsorted) to match `orderedProductIds`. */
+export async function reorderPlacements(
+  storeId: string,
+  areaId: string | null,
+  orderedProductIds: string[],
+): Promise<void> {
+  const d = data();
+  const refs: Ref[] = [];
+  orderedProductIds.forEach((pid, i) => {
+    const p = d.get('placements', placementId(pid, storeId));
+    if (p && !p.deleted && p.area_id === areaId && p.position !== i + 1) {
+      refs.push({ table: 'placements', row: { ...p, position: i + 1 } });
+    }
+  });
+  if (refs.length) await commit(refs);
+}

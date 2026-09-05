@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import ScreenHeader from '@/components/ScreenHeader.vue';
 import ShopRow from '@/components/ShopRow.vue';
+import DraggableGroup from '@/components/DraggableGroup.vue';
 import QuickAddBar from '@/components/QuickAddBar.vue';
 import StorePickerSheet from '@/components/StorePickerSheet.vue';
 import ItemSheet from '@/components/ItemSheet.vue';
@@ -10,7 +11,13 @@ import { useShopStore } from '@/stores/shop';
 import { useShoppingView } from '@/lib/shopping';
 import { usePullToRefresh } from '@/lib/usePullToRefresh';
 import { syncNow } from '@/lib/sync';
-import { finishShopping, restoreNeeds, setNeedStatus, setNeeded } from '@/lib/domain';
+import {
+  finishShopping,
+  reorderPlacements,
+  restoreNeeds,
+  setNeedStatus,
+  setNeeded,
+} from '@/lib/domain';
 import { showToast } from '@/lib/toast';
 
 const data = useDataStore();
@@ -120,12 +127,21 @@ const empty = computed(
           <span class="group__count">{{ g.items.length }}</span>
         </button>
         <template v-if="!shop.collapsed.has(g.key)">
+          <DraggableGroup
+            v-if="storeId"
+            :items="g.items"
+            @reorder="reorderPlacements(storeId, g.key === 'unsorted' ? null : g.key, $event)"
+            @toggle="toggle($event, true)"
+            @remove="(id, name) => removeItem(id, name)"
+            @open="openItem($event)"
+          />
           <ShopRow
             v-for="it in g.items"
+            v-else
             :key="it.need.id"
             :item="it"
             :checked="false"
-            :show-stores="!storeId"
+            show-stores
             @toggle="toggle(it.product.id, true)"
             @remove="removeItem(it.product.id, it.product.name)"
             @open="openItem(it.product.id)"

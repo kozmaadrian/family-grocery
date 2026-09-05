@@ -2,7 +2,12 @@
 import { ref } from 'vue';
 import type { ShopItem } from '@/lib/shopping';
 
-const props = defineProps<{ item: ShopItem; checked: boolean; showStores?: boolean }>();
+const props = defineProps<{
+  item: ShopItem;
+  checked: boolean;
+  showStores?: boolean;
+  draggableRow?: boolean;
+}>();
 const emit = defineEmits<{ toggle: []; remove: []; open: [] }>();
 
 const dx = ref(0);
@@ -75,6 +80,12 @@ void props;
             <span v-for="s in item.storeNames" :key="s" class="chip">{{ s }}</span>
           </template>
         </span>
+      </button>
+
+      <button v-if="draggableRow" class="row__grip" aria-label="Reorder" @click.stop>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+        </svg>
       </button>
     </div>
   </div>
@@ -152,6 +163,18 @@ void props;
   flex-wrap: wrap;
   font-size: var(--t-caption);
   color: var(--c-text-dim);
+}
+.row__grip {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: var(--c-text-faint);
+  cursor: grab;
+  touch-action: none;
 }
 .chip {
   background: var(--c-surface-2);
