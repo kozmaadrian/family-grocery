@@ -95,9 +95,11 @@ checklist.
   built-in area pinned last). The item is immediately on the list.
 - **Toggle "needed" from the Products screen**: create/tombstone the `Need` only.
   No placement is created.
-- **Check off** an item → `Need.status = in_cart`.
-- **Finish shopping** → tombstone all `in_cart` needs (undo available). `needed`
-  items that weren't bought stay.
+- **Check off** an item → `Need.status = in_cart` (short "in cart — Undo" toast).
+- **Finish shopping** → after a confirm sheet, tombstone every need on the current
+  store's list — `in_cart` **and** `needed` (i.e. any need whose product is placed
+  at that store). Needs with no placement there ("Not sold here") stay. "Any store"
+  mode clears all needs. 8-second Undo restores exact prior state.
 - **Delete a store** → tombstone the store, its areas, and its placements.
   Products and needs are untouched.
 - **Delete a product** → tombstone the product, its placements, and its need.
@@ -366,8 +368,9 @@ the server reports no password set, switches to "Set a family password".
 - **Quick-add bar** — sticky above the keyboard. Type → autocomplete against
   existing products → Enter adds a Need + Placement at the current store's
   Unsorted, keeps focus for the next item.
-- **Finish shopping** — appears in the header overflow (or as a bar) when ≥1 item
-  is in cart. Clears in-cart needs, undo toast.
+- **Finish shopping** — a button below the list, shown whenever the store's list
+  is non-empty. Opens a confirm sheet ("clears all N — X in cart, Y not bought"),
+  then clears the whole store list with an 8s Undo toast.
 - **Pull-to-refresh** → sync.
 - **Header collapses** the title on scroll; progress bar stays.
 
