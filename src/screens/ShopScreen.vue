@@ -125,19 +125,19 @@ const empty = computed(
       <span class="ptr__spin" :class="{ 'is-active': refreshing }">↻</span>
     </div>
 
-    <div
-      v-if="view.totalToBuy > 0 || view.inCart.length > 0"
-      class="progress"
-    >
-      <div
-        class="progress__fill"
-        :style="{
-          width: `${(view.inCart.length / Math.max(1, view.inCart.length + view.totalToBuy)) * 100}%`,
-        }"
-      />
-      <span class="progress__label">
-        {{ view.inCart.length }} of {{ view.inCart.length + view.totalToBuy }} in cart
-      </span>
+    <div v-if="finishSummary.total > 0" class="statusbar">
+      <div class="progress">
+        <div
+          class="progress__fill"
+          :style="{
+            width: `${(view.inCart.length / Math.max(1, view.inCart.length + view.totalToBuy)) * 100}%`,
+          }"
+        />
+        <span class="progress__label">
+          {{ view.inCart.length }} of {{ view.inCart.length + view.totalToBuy }} in cart
+        </span>
+      </div>
+      <button class="finish" @click="finishOpen = true">Finish</button>
     </div>
 
     <div class="body">
@@ -232,10 +232,6 @@ const empty = computed(
           />
         </template>
       </section>
-
-      <button v-if="finishSummary.total > 0" class="finish" @click="finishOpen = true">
-        Finish shopping
-      </button>
     </div>
 
     <QuickAddBar :store-id="storeId" />
@@ -287,10 +283,21 @@ const empty = computed(
 .ptr__spin.is-active {
   animation: spin 0.8s linear infinite;
 }
+.statusbar {
+  position: sticky;
+  top: calc(var(--header-h) + var(--safe-t));
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-4);
+  background: var(--c-bg);
+  border-bottom: 1px solid var(--c-border);
+}
 .progress {
   position: relative;
-  height: 24px;
-  margin: 0 var(--s-4) var(--s-2);
+  flex: 1;
+  height: 26px;
   background: var(--c-surface-2);
   border-radius: var(--r-full);
   overflow: hidden;
@@ -354,15 +361,17 @@ const empty = computed(
   color: var(--c-text-faint);
 }
 .finish {
-  display: block;
-  width: calc(100% - 2 * var(--s-4));
-  margin: var(--s-3) var(--s-4) 0;
-  padding: var(--s-3);
+  flex: none;
+  padding: 7px 14px;
   border: none;
-  border-radius: var(--r-md);
+  border-radius: var(--r-full);
   background: var(--c-accent);
   color: var(--c-accent-contrast);
   font-weight: 700;
+  font-size: var(--t-body-sm);
+}
+.finish:active {
+  transform: scale(0.96);
 }
 @keyframes spin {
   to {

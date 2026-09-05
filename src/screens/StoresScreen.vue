@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import ScreenHeader from '@/components/ScreenHeader.vue';
+import FabButton from '@/components/FabButton.vue';
 import PromptSheet from '@/components/PromptSheet.vue';
 import { useDataStore } from '@/stores/data';
 import { createStore } from '@/lib/domain';
@@ -36,15 +37,7 @@ async function add(name: string) {
 
 <template>
   <div class="screen">
-    <ScreenHeader title="Stores">
-      <template #actions>
-        <button class="add" aria-label="New store" @click="addOpen = true">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
-          </svg>
-        </button>
-      </template>
-    </ScreenHeader>
+    <ScreenHeader title="Stores" />
 
     <div class="list">
       <p v-if="stores.length === 0" class="empty">
@@ -63,6 +56,8 @@ async function add(name: string) {
       </RouterLink>
     </div>
 
+    <FabButton label="New store" @click="addOpen = true" />
+
     <PromptSheet
       v-model:open="addOpen"
       title="New store"
@@ -80,18 +75,9 @@ async function add(name: string) {
   flex-direction: column;
   min-height: 100%;
 }
-.add {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: var(--r-full);
-  background: var(--c-accent);
-  color: var(--c-accent-contrast);
-}
 .list {
-  padding: var(--s-2) var(--s-4) var(--s-6);
+  padding: var(--s-2) var(--s-4);
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 88px);
 }
 .empty {
   color: var(--c-text-dim);

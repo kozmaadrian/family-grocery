@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import ScreenHeader from '@/components/ScreenHeader.vue';
+import FabButton from '@/components/FabButton.vue';
 import ProductSheet from '@/components/ProductSheet.vue';
 import { useDataStore } from '@/stores/data';
 import { needId } from '@/lib/ids';
@@ -38,15 +39,7 @@ function openEdit(id: string) {
 
 <template>
   <div class="screen">
-    <ScreenHeader title="Products">
-      <template #actions>
-        <button class="add" aria-label="New product" @click="openNew">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
-          </svg>
-        </button>
-      </template>
-    </ScreenHeader>
+    <ScreenHeader title="Products" />
 
     <div class="search">
       <input v-model="query" class="search__input" type="search" placeholder="Search products" />
@@ -79,6 +72,8 @@ function openEdit(id: string) {
       </div>
     </div>
 
+    <FabButton label="New product" @click="openNew" />
+
     <ProductSheet
       v-model:open="sheetOpen"
       :product-id="editingId"
@@ -92,19 +87,6 @@ function openEdit(id: string) {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-}
-.add {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: var(--r-full);
-  background: var(--c-accent);
-  color: var(--c-accent-contrast);
-}
-.add:active {
-  transform: scale(0.94);
 }
 .search {
   padding: 0 var(--s-4) var(--s-3);
@@ -125,7 +107,8 @@ function openEdit(id: string) {
   border-color: var(--c-accent);
 }
 .list {
-  padding: 0 var(--s-4) var(--s-6);
+  padding: 0 var(--s-4);
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 88px);
 }
 .empty {
   color: var(--c-text-dim);

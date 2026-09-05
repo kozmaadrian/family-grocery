@@ -1,16 +1,21 @@
 // Seed the local dev database with example stores, aisles, products and a
 // starter shopping list. Idempotent — stable ids, so re-running just upserts.
 //
-//   npm run dev            # in another terminal (needs the API on :8787)
-//   node scripts/seed.mjs [password] [apiBase]
+//   npm run dev                       # in another terminal (API on :8787)
+//   node scripts/seed.mjs [--fresh] [password] [apiBase]
 //
+// --fresh first tombstones every existing row (clean slate), then seeds.
 // Defaults: password "grocery123", apiBase http://localhost:8787
 
-const PASSWORD = process.argv[2] || 'grocery123';
-const API = (process.argv[3] || 'http://localhost:8787').replace(/\/$/, '');
-const now = Date.now();
+const args = process.argv.slice(2);
+const FRESH = args.includes('--fresh');
+const rest = args.filter((a) => a !== '--fresh');
+const PASSWORD = rest[0] || 'grocery123';
+const API = (rest[1] || 'http://localhost:8787').replace(/\/$/, '');
 
-const row = (o) => ({ updated_at: now, deleted: 0, ...o });
+// Filled in at send time — must be after any --fresh tombstones so LWW keeps the seed.
+let stamp = Date.now();
+const row = (o) => ({ deleted: 0, ...o, updated_at: stamp });
 
 // --- stores + aisles (aisles in walking order via `position`) ---
 const stores = [
@@ -100,13 +105,46 @@ async function main() {
     process.exit(1);
   }
   const { token } = await res.json();
+  const auth = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
 
+  if (FRESH) {
+    const cur = await fetch(`${API}/api/sync`, {
+      method: 'POST',
+      headers: auth,
+      body: JSON.stringify({ cursor: 0, changes: {} }),
+    }).then((r) => r.json());
+    const kill = {};
+    for (const [table, rows] of Object.entries(cur.changes ?? {})) {
+      kill[table] = rows
+        .filter((r) => !r.deleted)
+        .map((r) => ({ ...r, deleted: 1, updated_at: stamp }));
+    }
+    const total = Object.values(kill).reduce((n, r) => n + r.length, 0);
+    if (total) {
+      const killed = await fetch(`${API}/api/sync`, {
+        method: 'POST',
+        headers: auth,
+        body: JSON.stringify({ cursor: 0, changes: kill }),
+      }).then((r) => r.json());
+      // seed rows must be newer than the server-stamped tombstones
+      stamp = (killed.cursor ?? Date.now()) + 1;
+      console.log(`--fresh: cleared ${total} existing rows.`);
+    }
+  }
+
+  const restamp = (rows) => rows.map((r) => ({ ...r, updated_at: stamp }));
   const sync = await fetch(`${API}/api/sync`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    headers: auth,
     body: JSON.stringify({
       cursor: 0,
-      changes: { stores, areas, products, placements, needs },
+      changes: {
+        stores: restamp(stores),
+        areas: restamp(areas),
+        products: restamp(products),
+        placements: restamp(placements),
+        needs: restamp(needs),
+      },
     }),
   });
   if (!sync.ok) {
