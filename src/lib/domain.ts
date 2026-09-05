@@ -2,7 +2,16 @@
 // invariants (deterministic ids, cascade tombstones, position bookkeeping).
 // See docs/specs.md §3.
 
-import type { Area, BaseRow, EntityTable, NeedStatus, Placement, Product, Store } from '@shared/types';
+import type {
+  Area,
+  BaseRow,
+  EntityTable,
+  Need,
+  NeedStatus,
+  Placement,
+  Product,
+  Store,
+} from '@shared/types';
 import { useDataStore } from '@/stores/data';
 import type { RowRef } from './repo';
 import { newId, placementId, needId } from './ids';
@@ -102,23 +111,28 @@ export async function updateNeed(
   await data().upsert('needs', { ...cur, ...patch });
 }
 
-/** Clear every in-cart item off the list. Returns the product ids removed (for undo). */
-export async function finishShopping(): Promise<string[]> {
+/**
+ * The needs "Finish shopping" would clear for a store: everything on that store's
+ * list — bought and not — but not items the store doesn't carry. In "Any store"
+ * mode (storeId ''), every active need.
+ */
+export function needsClearedByFinish(storeId: string): Need[] {
   const d = data();
-  const done = d.active('needs').filter((n) => n.status === 'in_cart');
-  if (done.length === 0) return [];
-  await commit(done.map((n) => ({ table: 'needs', row: { ...n, deleted: 1 } })));
-  return done.map((n) => n.product_id);
+  const needs = d.active('needs');
+  if (!storeId) return needs;
+  const placedHere = new Set(
+    placementsForStore(storeId).map((p) => p.product_id),
+  );
+  return needs.filter((n) => n.status === 'in_cart' || placedHere.has(n.product_id));
 }
 
-export async function restoreNeeds(productIds: string[]): Promise<void> {
-  const d = data();
-  const refs: Ref[] = [];
-  for (const pid of productIds) {
-    const n = d.get('needs', needId(pid));
-    if (n) refs.push({ table: 'needs', row: { ...n, deleted: 0 } });
-  }
-  if (refs.length) await commit(refs);
+/** Clear the store's list. Returns the pre-delete rows so the caller can offer Undo. */
+export async function finishShopping(storeId: string): Promise<RestorePoint> {
+  const cleared = needsClearedByFinish(storeId);
+  if (cleared.length === 0) return [];
+  const before: Ref[] = cleared.map((n) => ({ table: 'needs', row: { ...n } }));
+  await commit(cleared.map((n) => ({ table: 'needs', row: { ...n, deleted: 1 } })));
+  return before;
 }
 
 /* ---------- stores ---------- */

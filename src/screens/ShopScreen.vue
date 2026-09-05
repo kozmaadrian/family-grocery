@@ -6,6 +6,7 @@ import DraggableGroup from '@/components/DraggableGroup.vue';
 import QuickAddBar from '@/components/QuickAddBar.vue';
 import StorePickerSheet from '@/components/StorePickerSheet.vue';
 import ItemSheet from '@/components/ItemSheet.vue';
+import ConfirmSheet from '@/components/ConfirmSheet.vue';
 import { useDataStore } from '@/stores/data';
 import { useShopStore } from '@/stores/shop';
 import { useShoppingView } from '@/lib/shopping';
@@ -13,8 +14,9 @@ import { usePullToRefresh } from '@/lib/usePullToRefresh';
 import { syncNow } from '@/lib/sync';
 import {
   finishShopping,
+  needsClearedByFinish,
   reorderPlacements,
-  restoreNeeds,
+  restore,
   setNeedStatus,
   setNeeded,
 } from '@/lib/domain';
@@ -39,6 +41,26 @@ const itemOpen = ref(false);
 const itemProductId = ref<string | null>(null);
 const inCartOpen = ref(false);
 const notSoldOpen = ref(false);
+const finishOpen = ref(false);
+
+const finishSummary = computed(() => {
+  const cleared = needsClearedByFinish(storeId.value);
+  const bought = cleared.filter((n) => n.status === 'in_cart').length;
+  const notBought = cleared.length - bought;
+  return { total: cleared.length, bought, notBought };
+});
+
+const finishMessage = computed(() => {
+  const { total, bought, notBought } = finishSummary.value;
+  if (notBought === 0) {
+    return `Clears ${total} item${total > 1 ? 's' : ''} from the cart.`;
+  }
+  const scope = storeId.value ? ' for this store' : '';
+  const keep = storeId.value
+    ? " Items this store doesn't sell stay on the list."
+    : '';
+  return `Clears all ${total} items${scope} — ${bought} in cart and ${notBought} not bought.${keep} Undo is available right after.`;
+});
 
 const { distance, refreshing } = usePullToRefresh(() => syncNow());
 
@@ -49,6 +71,13 @@ function openItem(productId: string) {
 
 async function toggle(productId: string, checked: boolean) {
   await setNeedStatus(productId, checked ? 'in_cart' : 'needed');
+  if (checked) {
+    const name = data.get('products', productId)?.name ?? 'Item';
+    showToast(`${name} in cart`, {
+      action: { label: 'Undo', run: () => setNeedStatus(productId, 'needed') },
+      duration: 3500,
+    });
+  }
 }
 
 async function removeItem(productId: string, name: string) {
@@ -57,10 +86,12 @@ async function removeItem(productId: string, name: string) {
 }
 
 async function finish() {
-  const ids = await finishShopping();
-  if (ids.length) {
-    showToast(`${ids.length} item${ids.length > 1 ? 's' : ''} cleared`, {
-      action: { label: 'Undo', run: () => restoreNeeds(ids) },
+  finishOpen.value = false;
+  const point = await finishShopping(storeId.value);
+  if (point.length) {
+    showToast(`${point.length} item${point.length > 1 ? 's' : ''} cleared`, {
+      action: { label: 'Undo', run: () => restore(point) },
+      duration: 8000,
     });
   }
 }
@@ -200,8 +231,11 @@ const empty = computed(
             @open="openItem(it.product.id)"
           />
         </template>
-        <button class="finish" @click="finish">Finish shopping</button>
       </section>
+
+      <button v-if="finishSummary.total > 0" class="finish" @click="finishOpen = true">
+        Finish shopping
+      </button>
     </div>
 
     <QuickAddBar :store-id="storeId" />
@@ -215,6 +249,13 @@ const empty = computed(
       v-model:open="itemOpen"
       :product-id="itemProductId"
       :store-id="storeId"
+    />
+    <ConfirmSheet
+      v-model:open="finishOpen"
+      :title="storeId ? `Finish shopping at ${currentStoreName}?` : 'Clear the whole list?'"
+      :message="finishMessage"
+      confirm-label="Finish"
+      @confirm="finish"
     />
   </div>
 </template>
