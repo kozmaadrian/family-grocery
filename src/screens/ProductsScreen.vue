@@ -130,7 +130,7 @@ function openEdit(id: string) {
     <ProductSheet
       v-model:open="sheetOpen"
       :product-id="editingId"
-      @created="openEdit($event)"
+      :default-store-id="storeId"
     />
   </div>
 </template>

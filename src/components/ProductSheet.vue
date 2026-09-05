@@ -14,7 +14,12 @@ import {
 } from '@/lib/domain';
 import { showToast } from '@/lib/toast';
 
-const props = defineProps<{ open: boolean; productId: string | null }>();
+const props = defineProps<{
+  open: boolean;
+  productId: string | null;
+  /** preselect this store's checkbox when creating a product */
+  defaultStoreId?: string;
+}>();
 const emit = defineEmits<{ 'update:open': [value: boolean]; created: [id: string] }>();
 
 const data = useDataStore();
@@ -26,6 +31,8 @@ const product = computed(() =>
 
 const form = reactive({ name: '', qty: '', note: '' });
 const hydrating = ref(false);
+/** local store selection while creating a new product */
+const newStores = reactive(new Set<string>());
 
 watch(
   () => [props.open, props.productId] as const,
@@ -36,6 +43,8 @@ watch(
     form.name = p?.name ?? '';
     form.qty = p?.default_qty ?? '';
     form.note = p?.note ?? '';
+    newStores.clear();
+    if (isNew.value && props.defaultStoreId) newStores.add(props.defaultStoreId);
     await nextTick();
     hydrating.value = false;
   },
@@ -79,6 +88,11 @@ async function pickArea(storeId: string, areaId: string) {
   await setPlacement(props.productId, storeId, areaId || null);
 }
 
+function toggleNewStore(storeId: string) {
+  if (newStores.has(storeId)) newStores.delete(storeId);
+  else newStores.add(storeId);
+}
+
 const busy = ref(false);
 async function add() {
   if (busy.value || form.name.trim().length === 0) return;
@@ -89,6 +103,7 @@ async function add() {
       default_qty: form.qty,
       note: form.note,
     });
+    for (const storeId of newStores) await setPlacement(id, storeId, null);
     emit('created', id);
     emit('update:open', false);
   } finally {
@@ -136,6 +151,14 @@ async function remove() {
     </div>
 
     <template v-if="isNew">
+      <section v-if="stores.length" class="buy">
+        <h3 class="buy__label">Buy at</h3>
+        <label v-for="s in stores" :key="s.id" class="buy__row">
+          <input type="checkbox" :checked="newStores.has(s.id)" @change="toggleNewStore(s.id)" />
+          <span class="buy__name">{{ s.name }}</span>
+        </label>
+      </section>
+
       <button class="primary" :disabled="busy || form.name.trim().length === 0" @click="add">
         Add product
       </button>
