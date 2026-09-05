@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue';
 import ScreenHeader from '@/components/ScreenHeader.vue';
 import ShopRow from '@/components/ShopRow.vue';
-import DraggableGroup from '@/components/DraggableGroup.vue';
 import QuickAddBar from '@/components/QuickAddBar.vue';
 import StorePickerSheet from '@/components/StorePickerSheet.vue';
 import ItemSheet from '@/components/ItemSheet.vue';
@@ -15,7 +14,6 @@ import { syncNow } from '@/lib/sync';
 import {
   finishShopping,
   needsClearedByFinish,
-  reorderPlacements,
   restore,
   setNeedStatus,
   setNeeded,
@@ -137,16 +135,34 @@ const empty = computed(
           {{ view.boughtCount }} of {{ view.boughtCount + view.totalToBuy }} in cart
         </span>
       </div>
+      <button
+        v-if="view.boughtCount > 0"
+        class="eye"
+        :aria-pressed="shop.showBought"
+        :aria-label="shop.showBought ? 'Hide bought items' : 'Show bought items'"
+        @click="shop.setShowBought(!shop.showBought)"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" />
+          <path
+            v-if="!shop.showBought"
+            d="M4 4l16 16"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
       <button class="finish" @click="finishOpen = true">Finish</button>
     </div>
-
-    <button
-      v-if="view.boughtCount > 0"
-      class="boughttoggle"
-      @click="shop.setShowBought(!shop.showBought)"
-    >
-      {{ shop.showBought ? 'Hide' : 'Show' }} {{ view.boughtCount }} bought
-    </button>
 
     <div class="body">
       <p v-if="empty" class="empty">
@@ -176,23 +192,13 @@ const empty = computed(
           <span class="group__count">{{ g.items.length }}</span>
         </button>
         <template v-if="!shop.collapsed.has(g.key)">
-          <DraggableGroup
-            v-if="storeId"
-            :items="g.items"
-            :collapse-on-check="!shop.showBought"
-            @reorder="reorderPlacements(storeId, g.key === 'unsorted' ? null : g.key, $event)"
-            @toggle="(id, bought) => toggle(id, bought)"
-            @remove="(id, name) => removeItem(id, name)"
-            @open="openItem($event)"
-          />
           <ShopRow
             v-for="it in g.items"
-            v-else
             :key="it.need.id"
             :item="it"
             :checked="it.bought"
             :collapse-on-check="!shop.showBought"
-            show-stores
+            :show-stores="!storeId"
             @toggle="toggle(it.product.id, !it.bought)"
             @remove="removeItem(it.product.id, it.product.name)"
             @open="openItem(it.product.id)"
@@ -284,16 +290,23 @@ const empty = computed(
   background: var(--c-bg);
   border-bottom: 1px solid var(--c-border);
 }
-.boughttoggle {
-  display: block;
-  margin: var(--s-2) auto 0;
-  padding: 4px 12px;
+.eye {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
   border: none;
   border-radius: var(--r-full);
   background: var(--c-surface-2);
   color: var(--c-text-dim);
-  font-size: var(--t-caption);
-  font-weight: 600;
+}
+.eye[aria-pressed='true'] {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+.eye:active {
+  transform: scale(0.92);
 }
 .progress {
   position: relative;

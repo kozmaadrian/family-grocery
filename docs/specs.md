@@ -356,15 +356,17 @@ the server reports no password set, switches to "Set a family password".
 - **Progress bar** — "6 / 14 in cart", pinned under the header.
 - **Body** — areas as collapsible section headers in walking order; rows are the
   needed products in each area sorted by placement position. Then the built-in
-  **Unsorted** group. Then a collapsed **Not sold here (n)** group. Then a
-  collapsed **In cart (n)** group.
-  - Row: large checkbox · name · `qty · note` subtitle · drag handle.
-  - Tap checkbox / row body → toggle `in_cart` (spring animation, row moves to
-    *In cart*).
+  **Unsorted** group. Then a collapsed **Not sold here (n)** group.
+  - Row: check circle (left) · name, with store chips beneath in "Any store"
+    mode · quantity + note (right).
+  - Tap the circle → mark bought: the circle fills, the name strikes through,
+    then the row collapses away. An **eye toggle** in the status bar
+    ("show/hide N bought") brings bought rows back in place, struck through,
+    sorted to the bottom of their aisle.
   - Swipe left → remove from list (undo toast).
   - Long-press row → **Item sheet**: qty, note, move to area (this store), remove.
-  - Drag handle → reorder within an area or across area headers; updates
-    `placement.position` / `placement.area_id`.
+  - **No reordering here** — the walking order is arranged on the Products tab
+    (below). The Shop screen is read-only for order.
 - **Quick-add bar** — sticky above the keyboard. Type → autocomplete against
   existing products → Enter adds a Need + Placement at the current store's
   Unsorted, keeps focus for the next item.
@@ -376,10 +378,15 @@ the server reports no password set, switches to "Set a family password".
 
 ### 10.3 Products (catalog tab)
 
-- Sticky search field.
-- Rows: name · store chips (where it's placed) · a **needed** toggle.
-- `+` in header → **Add product** sheet.
-- Tap row → **Product sheet**:
+- Sticky search field. A **store picker** in the header (same as Shop's).
+- **No store selected ("All products")** — flat, name-sorted catalog. Each row:
+  check circle (toggles needed) · name · store chips · qty + note. Floating **+**
+  adds a product.
+- **Store selected** — the store's products grouped by aisle in walking order,
+  each row draggable by its grip. This is where the walking order is arranged.
+  Toggling the circle adds/removes the product from the list; dragging sets
+  `placement.position`. (Searching temporarily drops back to the flat view.)
+- Tap a row → **Product sheet**:
   - name, default qty, note.
   - **Buy at** — a toggle per store. On → create placement (Unsorted); off →
     tombstone placement.
@@ -496,7 +503,7 @@ drawn up at the start of each phase.
 | **3 — App shell** | vue-router + bottom tab bar; safe-area layout; theme tokens + light/dark + override; header scroll-collapse; toast system with Undo; Reka UI bottom sheet; Login screen + token flow. | ✅ |
 | **4 — Products & Stores** | Products list + search + Product sheet (name/qty/note autosave, buy-at toggles, per-store aisle); Stores list; Store screen with aisle CRUD + long-press **drag-to-reorder**. | ✅ |
 | **5 — Shop screen** | Store switcher + coverage; aisle-grouped ordered checklist; collapsible groups; progress; check-off → In cart; Finish shopping + undo; quick-add bar (VisualViewport + autocomplete); swipe-to-remove; Item sheet; Not-sold-here. | ✅ |
-| **6 — Reordering** | Per-aisle long-press drag-to-reorder on Shop, persisted to `placement.position`. Cross-aisle drag deferred — the item sheet's aisle picker covers it. | ✅ |
+| **6 — Reordering** | Per-aisle long-press drag-to-reorder, persisted to `placement.position`. Lives on the **Products tab** (store selected), not the Shop tab — the Shop screen stays a read-only checklist. Cross-aisle moves via the item/product sheet's aisle picker. | ✅ |
 | **7 — PWA** | `vite-plugin-pwa` (Workbox generateSW): precache shell, SPA fallback, `/api/*` NetworkOnly, autoUpdate; manifest + 192/512/maskable icons; iOS meta; install hint in Settings. | ✅ |
 | **8 — Polish & QA** | Global sync/offline status chip; deleted-store fallback; distinct empty states; hydration-guarded autosave; aria labels; light/dark verified. | ✅ |
 | **9 — Deploy** | Create prod D1, run migrations, set `AUTH_SECRET`, `wrangler deploy`, run `/api/setup`. Maintainer-run — see README. | ⬜ |

@@ -4,14 +4,30 @@ import ScreenHeader from '@/components/ScreenHeader.vue';
 import FabButton from '@/components/FabButton.vue';
 import CheckCircle from '@/components/CheckCircle.vue';
 import ProductSheet from '@/components/ProductSheet.vue';
+import StorePickerSheet from '@/components/StorePickerSheet.vue';
+import DraggableAisle from '@/components/DraggableAisle.vue';
 import { useDataStore } from '@/stores/data';
+import { useShopStore } from '@/stores/shop';
+import { useArrangeView } from '@/lib/arrange';
 import { needId } from '@/lib/ids';
-import { setNeeded, storesForProduct } from '@/lib/domain';
+import { reorderPlacements, setNeeded, storesForProduct } from '@/lib/domain';
 
 const data = useDataStore();
+const shop = useShopStore();
+
 const query = ref('');
 const sheetOpen = ref(false);
 const editingId = ref<string | null>(null);
+const pickerOpen = ref(false);
+
+const storeId = computed(() =>
+  shop.storeId && data.get('stores', shop.storeId) ? shop.storeId : '',
+);
+const storeLabel = computed(() =>
+  storeId.value ? (data.get('stores', storeId.value)?.name ?? 'Store') : 'All products',
+);
+const arranging = computed(() => storeId.value !== '' && !query.value.trim());
+const aisles = useArrangeView(storeId);
 
 const products = computed(() => {
   const q = query.value.trim().toLowerCase();
@@ -40,13 +56,44 @@ function openEdit(id: string) {
 
 <template>
   <div class="screen">
-    <ScreenHeader title="Products" />
+    <ScreenHeader title="Products">
+      <template #actions>
+        <button class="switch" @click="pickerOpen = true">
+          <span>{{ storeLabel }}</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </template>
+    </ScreenHeader>
 
     <div class="search">
       <input v-model="query" class="search__input" type="search" placeholder="Search products" />
     </div>
 
-    <div class="list">
+    <!-- store selected: arrange that store's products by aisle -->
+    <div v-if="arranging" class="list">
+      <p class="hint">
+        Tick what you need, and drag items into the order you pass them at
+        {{ storeLabel }}.
+      </p>
+      <p v-if="aisles.length === 0" class="empty">
+        No products assigned to {{ storeLabel }} yet.<br />
+        Open a product and turn on “Buy at {{ storeLabel }}”.
+      </p>
+      <section v-for="g in aisles" :key="g.key" class="group">
+        <div class="group__head">{{ g.title }}</div>
+        <DraggableAisle
+          :items="g.items"
+          @reorder="reorderPlacements(storeId, g.key === 'unsorted' ? null : g.key, $event)"
+          @toggle="(id, needed) => setNeeded(id, needed)"
+          @open="openEdit($event)"
+        />
+      </section>
+    </div>
+
+    <!-- default: flat catalog -->
+    <div v-else class="list">
       <p v-if="products.length === 0" class="empty">
         {{ query ? 'No matches.' : 'No products yet. Tap + to add one.' }}
       </p>
@@ -75,6 +122,11 @@ function openEdit(id: string) {
 
     <FabButton label="New product" @click="openNew" />
 
+    <StorePickerSheet
+      v-model:open="pickerOpen"
+      :selected="storeId"
+      @pick="shop.selectStore($event)"
+    />
     <ProductSheet
       v-model:open="sheetOpen"
       :product-id="editingId"
@@ -88,6 +140,24 @@ function openEdit(id: string) {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+}
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 55vw;
+  padding: 6px 8px 6px 12px;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-weight: 700;
+  font-size: var(--t-body-sm);
+}
+.switch span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .search {
   padding: 0 var(--s-4) var(--s-3);
@@ -111,10 +181,23 @@ function openEdit(id: string) {
   padding: 0 var(--s-4);
   padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 88px);
 }
+.hint {
+  color: var(--c-text-dim);
+  font-size: var(--t-body-sm);
+  margin: var(--s-2) 0 var(--s-3);
+}
 .empty {
   color: var(--c-text-dim);
   padding: var(--s-5) 0;
   text-align: center;
+}
+.group__head {
+  padding: var(--s-3) 0 var(--s-1);
+  font-size: var(--t-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-text-faint);
 }
 .row {
   display: flex;

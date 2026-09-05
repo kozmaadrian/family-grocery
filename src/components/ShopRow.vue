@@ -7,7 +7,6 @@ const props = defineProps<{
   item: ShopItem;
   checked: boolean;
   showStores?: boolean;
-  draggableRow?: boolean;
   /** play a collapse-out animation when checked (bought items are hidden) */
   collapseOnCheck?: boolean;
 }>();
@@ -111,12 +110,6 @@ function onPressEnd() {
         <span v-if="qty" class="row__qty">{{ qty }}</span>
         <span v-if="note" class="row__note">{{ note }}</span>
       </div>
-
-      <button v-if="draggableRow" class="row__grip" aria-label="Reorder" @click.stop>
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
-        </svg>
-      </button>
     </div>
   </div>
 </template>
@@ -210,18 +203,6 @@ function onPressEnd() {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
-}
-.row__grip {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 44px;
-  border: none;
-  background: none;
-  color: var(--c-text-faint);
-  cursor: grab;
-  touch-action: none;
 }
 .chip {
   background: var(--c-surface-2);
