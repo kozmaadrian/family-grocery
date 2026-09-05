@@ -5,6 +5,7 @@ import { dragAndDrop } from '@formkit/drag-and-drop/vue';
 import type { Area } from '@shared/types';
 import ScreenHeader from '@/components/ScreenHeader.vue';
 import PromptSheet from '@/components/PromptSheet.vue';
+import ConfirmSheet from '@/components/ConfirmSheet.vue';
 import { useDataStore } from '@/stores/data';
 import {
   areasForStore,
@@ -12,6 +13,7 @@ import {
   deleteArea,
   deleteStore,
   reorderAreas,
+  restore,
   updateArea,
   updateStore,
 } from '@/lib/domain';
@@ -54,6 +56,7 @@ watch(dragAreas, (list) => {
 const addOpen = ref(false);
 const renameStoreOpen = ref(false);
 const renameArea = ref<Area | null>(null);
+const confirmDeleteOpen = ref(false);
 
 async function onAddArea(name: string) {
   await createArea(storeId.value, name);
@@ -66,14 +69,19 @@ async function onRenameArea(name: string) {
   renameArea.value = null;
 }
 async function onDeleteArea(area: Area) {
-  await deleteArea(area.id);
-  showToast(`Removed “${area.name}”`);
+  const point = await deleteArea(area.id);
+  showToast(`Removed “${area.name}”`, {
+    action: { label: 'Undo', run: () => restore(point) },
+  });
 }
 async function onDeleteStore() {
   const name = store.value?.name ?? 'store';
+  const point = await deleteStore(storeId.value);
   router.push('/stores');
-  await deleteStore(storeId.value);
-  showToast(`Deleted ${name}`);
+  showToast(`Deleted ${name}`, {
+    action: { label: 'Undo', run: () => restore(point) },
+    duration: 8000,
+  });
 }
 </script>
 
@@ -111,8 +119,17 @@ async function onDeleteStore() {
         Add aisle
       </button>
 
-      <button class="danger" @click="onDeleteStore">Delete store</button>
+      <button class="danger" @click="confirmDeleteOpen = true">Delete store</button>
     </div>
+
+    <ConfirmSheet
+      v-model:open="confirmDeleteOpen"
+      :title="`Delete ${store?.name ?? 'store'}?`"
+      :message="`This also removes its ${dragAreas.length} ${dragAreas.length === 1 ? 'aisle' : 'aisles'} and every product's placement here. You can undo right after.`"
+      confirm-label="Delete"
+      danger
+      @confirm="onDeleteStore"
+    />
 
     <PromptSheet
       v-model:open="addOpen"

@@ -8,6 +8,7 @@ import {
   deleteProduct,
   placement,
   removePlacement,
+  restore,
   setPlacement,
   updateProduct,
 } from '@/lib/domain';
@@ -97,10 +98,12 @@ async function add() {
 
 async function remove() {
   if (!props.productId) return;
-  const id = props.productId;
+  const name = product.value?.name ?? 'Product';
   emit('update:open', false);
-  await deleteProduct(id);
-  showToast('Product deleted');
+  const point = await deleteProduct(props.productId);
+  showToast(`Deleted ${name}`, {
+    action: { label: 'Undo', run: () => restore(point) },
+  });
 }
 </script>
 

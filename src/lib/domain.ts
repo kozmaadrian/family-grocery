@@ -46,17 +46,25 @@ export async function updateProduct(id: string, patch: Partial<Product>): Promis
   await data().upsert('products', { ...cur, ...patch });
 }
 
-export async function deleteProduct(id: string): Promise<void> {
+export async function deleteProduct(id: string): Promise<RestorePoint> {
   const d = data();
   const product = d.get('products', id);
-  if (!product) return;
+  if (!product) return [];
+  const before: Ref[] = [{ table: 'products', row: { ...product } }];
   const refs: Ref[] = [{ table: 'products', row: { ...product, deleted: 1 } }];
   const need = d.get('needs', needId(id));
-  if (need && !need.deleted) refs.push({ table: 'needs', row: { ...need, deleted: 1 } });
+  if (need && !need.deleted) {
+    before.push({ table: 'needs', row: { ...need } });
+    refs.push({ table: 'needs', row: { ...need, deleted: 1 } });
+  }
   for (const p of d.active('placements')) {
-    if (p.product_id === id) refs.push({ table: 'placements', row: { ...p, deleted: 1 } });
+    if (p.product_id === id) {
+      before.push({ table: 'placements', row: { ...p } });
+      refs.push({ table: 'placements', row: { ...p, deleted: 1 } });
+    }
   }
   await commit(refs);
+  return before;
 }
 
 /* ---------- needs ---------- */
@@ -127,18 +135,33 @@ export async function updateStore(id: string, patch: Partial<Store>): Promise<vo
   await data().upsert('stores', { ...cur, ...patch });
 }
 
-export async function deleteStore(id: string): Promise<void> {
+/** Snapshot of rows changed by a delete, so the caller can offer Undo. */
+export type RestorePoint = Ref[];
+
+export async function restore(point: RestorePoint): Promise<void> {
+  if (point.length) await commit(point.map((r) => ({ ...r, row: { ...r.row } })));
+}
+
+export async function deleteStore(id: string): Promise<RestorePoint> {
   const d = data();
   const store = d.get('stores', id);
-  if (!store) return;
+  if (!store) return [];
+  const before: Ref[] = [{ table: 'stores', row: { ...store } }];
   const refs: Ref[] = [{ table: 'stores', row: { ...store, deleted: 1 } }];
   for (const a of d.active('areas')) {
-    if (a.store_id === id) refs.push({ table: 'areas', row: { ...a, deleted: 1 } });
+    if (a.store_id === id) {
+      before.push({ table: 'areas', row: { ...a } });
+      refs.push({ table: 'areas', row: { ...a, deleted: 1 } });
+    }
   }
   for (const p of d.active('placements')) {
-    if (p.store_id === id) refs.push({ table: 'placements', row: { ...p, deleted: 1 } });
+    if (p.store_id === id) {
+      before.push({ table: 'placements', row: { ...p } });
+      refs.push({ table: 'placements', row: { ...p, deleted: 1 } });
+    }
   }
   await commit(refs);
+  return before;
 }
 
 /* ---------- areas ---------- */
@@ -168,15 +191,20 @@ export async function updateArea(id: string, patch: Partial<Area>): Promise<void
   await data().upsert('areas', { ...cur, ...patch });
 }
 
-export async function deleteArea(id: string): Promise<void> {
+export async function deleteArea(id: string): Promise<RestorePoint> {
   const d = data();
   const area = d.get('areas', id);
-  if (!area) return;
+  if (!area) return [];
+  const before: Ref[] = [{ table: 'areas', row: { ...area } }];
   const refs: Ref[] = [{ table: 'areas', row: { ...area, deleted: 1 } }];
   for (const p of d.active('placements')) {
-    if (p.area_id === id) refs.push({ table: 'placements', row: { ...p, area_id: null } });
+    if (p.area_id === id) {
+      before.push({ table: 'placements', row: { ...p } });
+      refs.push({ table: 'placements', row: { ...p, area_id: null } });
+    }
   }
   await commit(refs);
+  return before;
 }
 
 export async function reorderAreas(_storeId: string, orderedIds: string[]): Promise<void> {
