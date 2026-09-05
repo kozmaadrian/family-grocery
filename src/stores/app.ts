@@ -17,6 +17,7 @@ function readStoredTheme(): ThemePref {
 export const useAppStore = defineStore('app', {
   state: () => ({
     theme: readStoredTheme() as ThemePref,
+    settingsOpen: false,
   }),
   actions: {
     setTheme(pref: ThemePref) {
