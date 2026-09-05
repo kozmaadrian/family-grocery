@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import ScreenHeader from '@/components/ScreenHeader.vue';
 import FabButton from '@/components/FabButton.vue';
+import CheckCircle from '@/components/CheckCircle.vue';
 import ProductSheet from '@/components/ProductSheet.vue';
 import { useDataStore } from '@/stores/data';
 import { needId } from '@/lib/ids';
@@ -51,24 +52,24 @@ function openEdit(id: string) {
       </p>
 
       <div v-for="p in products" :key="p.id" class="row">
+        <CheckCircle
+          :checked="isNeeded(p.id)"
+          :label="isNeeded(p.id) ? `Remove ${p.name} from the list` : `Add ${p.name} to the list`"
+          @toggle="setNeeded(p.id, !isNeeded(p.id))"
+        />
         <button class="row__main" @click="openEdit(p.id)">
-          <span class="row__name">{{ p.name }}</span>
-          <span class="row__meta">
-            <template v-for="(sid, i) in storesForProduct(p.id)" :key="sid">
-              <span class="chip">{{ storeName(sid) }}</span>
-              <span v-if="i < storesForProduct(p.id).length - 1" class="chip-gap" />
-            </template>
+          <span class="row__name" :class="{ 'is-on': isNeeded(p.id) }">{{ p.name }}</span>
+          <span
+            v-if="p.default_qty || p.note || storesForProduct(p.id).length"
+            class="row__meta"
+          >
             <span v-if="p.default_qty" class="row__qty">{{ p.default_qty }}</span>
+            <span v-if="p.note" class="row__note">{{ p.note }}</span>
+            <span v-for="sid in storesForProduct(p.id)" :key="sid" class="chip">
+              {{ storeName(sid) }}
+            </span>
           </span>
         </button>
-        <label class="row__need" :class="{ 'is-on': isNeeded(p.id) }">
-          <input
-            type="checkbox"
-            :checked="isNeeded(p.id)"
-            @change="setNeeded(p.id, ($event.target as HTMLInputElement).checked)"
-          />
-          <span>Need</span>
-        </label>
       </div>
     </div>
 
@@ -118,7 +119,9 @@ function openEdit(id: string) {
 .row {
   display: flex;
   align-items: center;
-  gap: var(--s-2);
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+  min-height: 56px;
   border-bottom: 1px solid var(--c-border);
 }
 .row__main {
@@ -126,8 +129,8 @@ function openEdit(id: string) {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--s-3) 0;
+  gap: 3px;
+  padding: 0;
   border: none;
   background: none;
   text-align: left;
@@ -135,39 +138,26 @@ function openEdit(id: string) {
 .row__name {
   font-size: var(--t-body);
 }
+.row__name.is-on {
+  color: var(--c-accent);
+  font-weight: 600;
+}
 .row__meta {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  font-size: var(--t-caption);
+  color: var(--c-text-dim);
 }
 .chip {
-  font-size: var(--t-caption);
   color: var(--c-text-dim);
   background: var(--c-surface-2);
   padding: 1px 8px;
   border-radius: var(--r-full);
 }
-.row__qty {
-  font-size: var(--t-caption);
+.row__qty,
+.row__note {
   color: var(--c-text-faint);
-}
-.row__need {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: var(--s-2);
-  color: var(--c-text-faint);
-  font-size: 11px;
-  font-weight: 600;
-}
-.row__need.is-on {
-  color: var(--c-accent);
-}
-.row__need input {
-  width: 22px;
-  height: 22px;
-  accent-color: var(--c-accent);
 }
 </style>

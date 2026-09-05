@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { ShopItem } from '@/lib/shopping';
+import CheckCircle from './CheckCircle.vue';
 
 const props = defineProps<{
   item: ShopItem;
@@ -9,6 +10,10 @@ const props = defineProps<{
   draggableRow?: boolean;
 }>();
 const emit = defineEmits<{ toggle: []; remove: []; open: [] }>();
+
+// per-trip value wins, else the product's default
+const qty = computed(() => props.item.need.qty || props.item.product.default_qty || '');
+const note = computed(() => props.item.need.note || props.item.product.note || '');
 
 const dx = ref(0);
 const swiping = ref(false);
@@ -59,24 +64,17 @@ void props;
       @touchend="onPressEnd"
       @touchmove.passive="onPressEnd"
     >
-      <button
-        class="row__check"
-        :class="{ 'is-on': checked }"
-        :aria-pressed="checked"
-        :aria-label="checked ? `Move ${item.product.name} back to list` : `Put ${item.product.name} in cart`"
-        @click="emit('toggle')"
-      >
-        <svg v-if="checked" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <path d="M5 12l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
+      <CheckCircle
+        :checked="checked"
+        :label="checked ? `Move ${item.product.name} back to list` : `Put ${item.product.name} in cart`"
+        @toggle="emit('toggle')"
+      />
 
       <button class="row__body" @click="emit('open')">
         <span class="row__name" :class="{ 'is-done': checked }">{{ item.product.name }}</span>
-        <span v-if="item.need.qty || item.need.note || (showStores && item.storeNames.length)" class="row__sub">
-          <template v-if="item.need.qty">{{ item.need.qty }}</template>
-          <template v-if="item.need.qty && item.need.note"> · </template>
-          <template v-if="item.need.note">{{ item.need.note }}</template>
+        <span v-if="qty || note || (showStores && item.storeNames.length)" class="row__sub">
+          <span v-if="qty" class="row__qty">{{ qty }}</span>
+          <span v-if="note">{{ note }}</span>
           <template v-if="showStores">
             <span v-for="s in item.storeNames" :key="s" class="chip">{{ s }}</span>
           </template>
@@ -119,26 +117,6 @@ void props;
   background: var(--c-bg);
   border-bottom: 1px solid var(--c-border);
 }
-.row__check {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--c-border);
-  border-radius: var(--r-full);
-  background: var(--c-surface);
-  color: var(--c-accent-contrast);
-  transition:
-    background var(--dur) var(--ease),
-    border-color var(--dur) var(--ease),
-    transform var(--dur) var(--ease);
-}
-.row__check.is-on {
-  background: var(--c-accent);
-  border-color: var(--c-accent);
-  animation: pop 0.25s var(--ease);
-}
 .row__body {
   flex: 1;
   min-width: 0;
@@ -165,6 +143,10 @@ void props;
   font-size: var(--t-caption);
   color: var(--c-text-dim);
 }
+.row__qty {
+  font-weight: 700;
+  color: var(--c-text);
+}
 .row__grip {
   flex: none;
   display: grid;
@@ -181,10 +163,5 @@ void props;
   background: var(--c-surface-2);
   padding: 1px 7px;
   border-radius: var(--r-full);
-}
-@keyframes pop {
-  40% {
-    transform: scale(1.18);
-  }
 }
 </style>
