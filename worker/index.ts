@@ -1,7 +1,7 @@
 // Cloudflare Worker entry. Handles /api/*; everything else is served by [assets].
 // See docs/specs.md §6–§8.
 
-import type { AuthResponse, SyncRequest } from '@shared/types';
+import type { AuthResponse, SyncRequest } from '../shared/types';
 import { isAuthed, issueToken, getPasswordHash, setPassword, verifyPassword } from './auth';
 import { runSync, SyncError } from './sync';
 

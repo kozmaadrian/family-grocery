@@ -1,6 +1,6 @@
 import type { Env } from './index';
-import type { EntityTable, SyncRequest, SyncResponse } from '@shared/types';
-import { ENTITY_TABLES } from '@shared/types';
+import type { EntityTable, SyncRequest, SyncResponse } from '../shared/types';
+import { ENTITY_TABLES } from '../shared/types';
 import { buildUpsert, normalizeRow, pullChanges } from './db';
 
 const MAX_ROWS_PER_SYNC = 5000;

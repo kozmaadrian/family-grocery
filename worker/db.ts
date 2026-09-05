@@ -1,5 +1,5 @@
-import type { ChangeSet, EntityTable } from '@shared/types';
-import { ENTITY_TABLES } from '@shared/types';
+import type { ChangeSet, EntityTable } from '../shared/types';
+import { ENTITY_TABLES } from '../shared/types';
 
 /** Column order per table. `id` first, `updated_at` and `deleted` last. */
 export const TABLE_COLUMNS: Record<EntityTable, readonly string[]> = {
