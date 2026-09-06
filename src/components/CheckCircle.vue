@@ -1,12 +1,14 @@
 <script setup lang="ts">
-defineProps<{ checked: boolean; label: string }>();
+withDefaults(defineProps<{ checked: boolean; label: string; variant?: 'check' | 'add' }>(), {
+  variant: 'check',
+});
 const emit = defineEmits<{ toggle: [] }>();
 </script>
 
 <template>
   <button
     class="check"
-    :class="{ 'is-on': checked }"
+    :class="{ 'is-on': checked, 'is-add': variant === 'add' && !checked }"
     :aria-pressed="checked"
     :aria-label="label"
     @click.stop="emit('toggle')"
@@ -27,6 +29,15 @@ const emit = defineEmits<{ toggle: [] }>();
         stroke-linecap="round"
         stroke-linejoin="round"
       />
+    </svg>
+    <svg
+      v-else-if="variant === 'add'"
+      viewBox="0 0 24 24"
+      width="15"
+      height="15"
+      aria-hidden="true"
+    >
+      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
     </svg>
   </button>
 </template>
@@ -52,6 +63,10 @@ const emit = defineEmits<{ toggle: [] }>();
   display: block;
   /* optical centring — a checkmark reads slightly low-left of geometric centre */
   transform: translate(0.5px, -0.5px);
+}
+.check.is-add {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
 }
 .check.is-on {
   background: var(--c-accent);

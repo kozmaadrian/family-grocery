@@ -46,6 +46,7 @@ watch(list, (l) => {
   <div ref="parent">
     <div v-for="it in list" :key="it.product.id" class="arr">
       <CheckCircle
+        variant="add"
         :checked="it.needed"
         :label="it.needed ? `Remove ${it.product.name} from the list` : `Add ${it.product.name} to the list`"
         @toggle="emit('toggle', it.product.id, !it.needed)"

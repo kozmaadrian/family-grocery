@@ -100,6 +100,7 @@ function openEdit(id: string) {
 
       <div v-for="p in products" :key="p.id" class="row">
         <CheckCircle
+          variant="add"
           :checked="isNeeded(p.id)"
           :label="isNeeded(p.id) ? `Remove ${p.name} from the list` : `Add ${p.name} to the list`"
           @toggle="setNeeded(p.id, !isNeeded(p.id))"
