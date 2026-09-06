@@ -8,13 +8,18 @@ const emit = defineEmits<{ toggle: [] }>();
 <template>
   <button
     class="check"
-    :class="{ 'is-on': checked, 'is-add': variant === 'add' && !checked }"
+    :class="{
+      'is-on': checked && variant === 'check',
+      'is-add': variant === 'add' && !checked,
+      'is-remove': variant === 'add' && checked,
+    }"
     :aria-pressed="checked"
     :aria-label="label"
     @click.stop="emit('toggle')"
   >
+    <!-- Shop: tick when in cart -->
     <svg
-      v-if="checked"
+      v-if="variant === 'check' && checked"
       class="check__tick"
       viewBox="0 0 24 24"
       width="16"
@@ -30,14 +35,17 @@ const emit = defineEmits<{ toggle: [] }>();
         stroke-linejoin="round"
       />
     </svg>
-    <svg
-      v-else-if="variant === 'add'"
-      viewBox="0 0 24 24"
-      width="15"
-      height="15"
-      aria-hidden="true"
-    >
-      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+
+    <!-- Products: + to add, − to remove -->
+    <svg v-else-if="variant === 'add'" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+      <path
+        v-if="!checked"
+        d="M12 5v14M5 12h14"
+        stroke="currentColor"
+        stroke-width="2.6"
+        stroke-linecap="round"
+      />
+      <path v-else d="M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
     </svg>
   </button>
 </template>
@@ -57,6 +65,7 @@ const emit = defineEmits<{ toggle: [] }>();
   transition:
     background var(--dur) var(--ease),
     border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease),
     transform var(--dur) var(--ease);
 }
 .check__tick {
@@ -67,6 +76,11 @@ const emit = defineEmits<{ toggle: [] }>();
 .check.is-add {
   border-color: var(--c-accent);
   color: var(--c-accent);
+}
+.check.is-remove {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+  background: var(--c-danger-soft);
 }
 .check.is-on {
   background: var(--c-accent);
