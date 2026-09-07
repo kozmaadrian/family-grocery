@@ -33,7 +33,7 @@ async function runAction(t: Toast) {
   left: 0;
   right: 0;
   bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--qa-h, 0px) + var(--s-3));
-  z-index: 60;
+  z-index: 35; /* below bottom sheets (40/41) so a dialog covers pending toasts */
   display: flex;
   flex-direction: column;
   align-items: center;

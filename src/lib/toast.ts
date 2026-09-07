@@ -28,6 +28,12 @@ export function dismissToast(id: number): void {
   if (i !== -1) state.items.splice(i, 1);
 }
 
+export function clearToasts(): void {
+  for (const t of timers.values()) clearTimeout(t);
+  timers.clear();
+  state.items.length = 0;
+}
+
 export function showToast(
   message: string,
   opts: { action?: ToastAction; duration?: number } = {},

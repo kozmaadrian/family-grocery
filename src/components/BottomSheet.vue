@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import {
   DialogRoot,
   DialogPortal,
@@ -8,14 +8,23 @@ import {
   DialogTitle,
   DialogClose,
 } from 'reka-ui';
+import { clearToasts } from '@/lib/toast';
 
-defineProps<{
+const props = defineProps<{
   open: boolean;
   title?: string;
   /** hide the default close (X) button */
   hideClose?: boolean;
 }>();
 const emit = defineEmits<{ 'update:open': [value: boolean] }>();
+
+// a pending Undo toast belongs to the previous action — clear it when a dialog opens
+watch(
+  () => props.open,
+  (open) => {
+    if (open) clearToasts();
+  },
+);
 
 const dragY = ref(0);
 const dragging = ref(false);
