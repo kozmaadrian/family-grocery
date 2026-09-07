@@ -195,12 +195,12 @@ function onPressEnd() {
 }
 .row__qty {
   flex: none;
-  padding: 2px 9px;
+  padding: 3px 12px;
   border-radius: var(--r-full);
   background: var(--c-accent-soft);
   color: var(--c-accent);
-  font-size: var(--t-caption);
-  font-weight: 700;
+  font-size: var(--t-body);
+  font-weight: 800;
   white-space: nowrap;
 }
 .row__qty.is-done {

@@ -24,8 +24,9 @@ const storeId = computed(() =>
   shop.storeId && data.get('stores', shop.storeId) ? shop.storeId : '',
 );
 const storeLabel = computed(() =>
-  storeId.value ? (data.get('stores', storeId.value)?.name ?? 'Store') : 'All products',
+  storeId.value ? (data.get('stores', storeId.value)?.name ?? 'Store') : 'All stores',
 );
+const pillLabel = computed(() => (storeId.value ? storeLabel.value : 'All'));
 const arranging = computed(() => storeId.value !== '' && !query.value.trim());
 const aisles = useArrangeView(storeId);
 
@@ -59,7 +60,7 @@ function openEdit(id: string) {
     <ScreenHeader title="Products">
       <template #actions>
         <button class="switch" @click="pickerOpen = true">
-          <span>{{ storeLabel }}</span>
+          <span>{{ pillLabel }}</span>
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
             <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
@@ -251,12 +252,12 @@ function openEdit(id: string) {
 }
 .row__qty {
   flex: none;
-  padding: 2px 9px;
+  padding: 3px 11px;
   border-radius: var(--r-full);
   background: var(--c-surface-2);
-  color: var(--c-text-dim);
-  font-size: var(--t-caption);
-  font-weight: 600;
+  color: var(--c-text);
+  font-size: var(--t-body-sm);
+  font-weight: 700;
   white-space: nowrap;
 }
 .row__note {

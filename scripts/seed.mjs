@@ -34,28 +34,32 @@ const areas = [
   row({ id: 'area_costco_fridge', store_id: 'store_costco', name: 'Fridge wall', position: 3 }),
 ];
 
-// --- products ---
+// --- products (a spread of every variant: qty only / note only / both / neither) ---
 const P = (id, name, extra = {}) =>
   row({ id, name, default_qty: null, note: null, ...extra });
 const products = [
-  P('prod_milk', 'Milk', { default_qty: '2' }),
-  P('prod_eggs', 'Eggs'),
-  P('prod_bread', 'Bread'),
-  P('prod_apples', 'Apples', { default_qty: '6' }),
-  P('prod_bananas', 'Bananas'),
-  P('prod_tomatoes', 'Tomatoes'),
-  P('prod_butter', 'Butter'),
-  P('prod_yoghurt', 'Yoghurt', { note: 'the plain one' }),
-  P('prod_peas', 'Frozen peas'),
-  P('prod_coffee', 'Coffee beans'),
-  P('prod_oil', 'Olive oil'),
-  P('prod_candles', 'Birthday candles'),
+  P('prod_milk', 'Milk', { default_qty: '2 L', note: 'semi-skimmed' }), // qty + note, multi-store
+  P('prod_eggs', 'Eggs', { default_qty: '12' }), // qty only, multi-store
+  P('prod_bread', 'Bread', { note: 'sourdough' }), // note only
+  P('prod_apples', 'Apples', { default_qty: '6', note: 'green, firm' }), // qty + note
+  P('prod_bananas', 'Bananas', { default_qty: '1 bunch' }), // qty only
+  P('prod_tomatoes', 'Tomatoes'), // plain
+  P('prod_butter', 'Butter', { note: 'unsalted' }), // note only
+  P('prod_yoghurt', 'Yoghurt', { default_qty: '4', note: 'plain, big pots' }), // qty + note
+  P('prod_peas', 'Frozen peas'), // plain
+  P('prod_chicken', 'Chicken breast', { default_qty: '500 g', note: 'free-range' }), // qty + note, multi-store
+  P('prod_rice', 'Basmati rice', { default_qty: '5 kg bag' }), // qty only, Costco bulk
+  P('prod_coffee', 'Coffee beans', { note: 'the dark roast' }), // note only, Costco
+  P('prod_oil', 'Olive oil', { default_qty: '1 L' }), // qty only, multi-store
+  P('prod_dishsoap', 'Dish soap'), // plain, multi-store
+  P('prod_candles', 'Birthday candles'), // plain, not sold anywhere
 ];
 
 // --- placements: which product is bought where, in which aisle ---
 const place = (product_id, store_id, area_id, position) =>
   row({ id: `${product_id}:${store_id}`, product_id, store_id, area_id, position });
 const placements = [
+  // Lidl — the weekly shop
   place('prod_apples', 'store_lidl', 'area_lidl_produce', 1),
   place('prod_bananas', 'store_lidl', 'area_lidl_produce', 2),
   place('prod_tomatoes', 'store_lidl', 'area_lidl_produce', 3),
@@ -64,25 +68,32 @@ const placements = [
   place('prod_eggs', 'store_lidl', 'area_lidl_dairy', 2),
   place('prod_butter', 'store_lidl', 'area_lidl_dairy', 3),
   place('prod_yoghurt', 'store_lidl', 'area_lidl_dairy', 4),
+  place('prod_chicken', 'store_lidl', 'area_lidl_dairy', 5),
   place('prod_peas', 'store_lidl', 'area_lidl_frozen', 1),
   place('prod_oil', 'store_lidl', null, 1), // unsorted
-  // Costco carries the bulk staples, different layout
-  place('prod_coffee', 'store_costco', 'area_costco_dry', 1),
-  place('prod_oil', 'store_costco', 'area_costco_dry', 2),
-  place('prod_milk', 'store_costco', 'area_costco_fridge', 1),
-  place('prod_eggs', 'store_costco', 'area_costco_fridge', 2),
+  place('prod_dishsoap', 'store_lidl', null, 2), // unsorted
+  // Costco — bulk staples, different layout
+  place('prod_rice', 'store_costco', 'area_costco_dry', 1),
+  place('prod_coffee', 'store_costco', 'area_costco_dry', 2),
+  place('prod_oil', 'store_costco', 'area_costco_dry', 3), // multi-store
+  place('prod_dishsoap', 'store_costco', 'area_costco_dry', 4), // multi-store
+  place('prod_milk', 'store_costco', 'area_costco_fridge', 1), // multi-store
+  place('prod_eggs', 'store_costco', 'area_costco_fridge', 2), // multi-store
+  place('prod_chicken', 'store_costco', 'area_costco_fridge', 3), // multi-store
 ];
 
-// --- a starter shopping list (need id === product id) ---
-const need = (product_id, status = 'needed') =>
-  row({ id: product_id, product_id, qty: null, note: null, status });
+// --- a starter shopping list ---
+// need id === product id; qty / note here override the product defaults for this trip
+const need = (product_id, over = {}) =>
+  row({ id: product_id, product_id, qty: null, note: null, status: 'needed', ...over });
 const needs = [
-  need('prod_milk'),
-  need('prod_bread'),
-  need('prod_apples'),
-  need('prod_yoghurt'),
-  need('prod_coffee'),
-  need('prod_candles'), // not sold at either store — shows under "Not sold here"
+  need('prod_milk'), // uses product defaults (2 L · semi-skimmed)
+  need('prod_bread'), // note only, from product
+  need('prod_apples', { qty: '10', note: 'for the pie' }), // per-trip override of both
+  need('prod_yoghurt', { qty: '2' }), // per-trip qty override, note from product
+  need('prod_chicken'), // qty + note from product, multi-store
+  need('prod_rice'), // qty only, Costco only
+  need('prod_candles'), // not sold anywhere — shows under "Not sold here"
 ];
 
 async function post(path, body, headers = { 'content-type': 'application/json' }) {
@@ -150,6 +161,7 @@ async function main() {
     `Seeded: ${stores.length} stores, ${areas.length} aisles, ${products.length} products, ` +
       `${placements.length} placements, ${needs.length} on the list.`,
   );
+  console.log('Includes: multi-store items, qty-only, note-only, qty+note, and plain.');
   console.log('Reload the app (or Settings → Sync now) to see it.');
 }
 

@@ -99,12 +99,12 @@ watch(list, (l) => {
 }
 .arr__qty {
   flex: none;
-  padding: 2px 9px;
+  padding: 3px 11px;
   border-radius: var(--r-full);
   background: var(--c-surface-2);
-  color: var(--c-text-dim);
-  font-size: var(--t-caption);
-  font-weight: 600;
+  color: var(--c-text);
+  font-size: var(--t-body-sm);
+  font-weight: 700;
   white-space: nowrap;
 }
 .arr__grip {
