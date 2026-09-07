@@ -71,10 +71,13 @@ async function moveTo(areaId: string) {
 
 async function removeFromList() {
   if (!props.productId) return;
+  const id = props.productId;
   const name = product.value?.name ?? 'Item';
   emit('update:open', false);
-  await setNeeded(props.productId, false);
-  showToast(`Removed ${name}`);
+  await setNeeded(id, false);
+  showToast(`Removed ${name}`, {
+    action: { label: 'Undo', run: () => setNeeded(id, true) },
+  });
 }
 </script>
 
