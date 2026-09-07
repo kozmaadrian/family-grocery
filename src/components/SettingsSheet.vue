@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import BottomSheet from './BottomSheet.vue';
+import ImportSheet from './ImportSheet.vue';
 import { useAppStore, type ThemePref } from '@/stores/app';
 import { useAuthStore } from '@/stores/auth';
 import { useSyncStore } from '@/stores/sync';
 import { syncNow } from '@/lib/sync';
 import { showToast } from '@/lib/toast';
 import { usePwaInstall } from '@/lib/usePwaInstall';
+import { exportData } from '@/lib/portable';
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{ 'update:open': [value: boolean] }>();
@@ -47,6 +49,24 @@ async function resetLocal() {
   await auth.signOut(true);
   showToast('Local data cleared');
 }
+
+const importOpen = ref(false);
+
+async function exportJson() {
+  const json = JSON.stringify(exportData(), null, 2);
+  try {
+    await navigator.clipboard.writeText(json);
+    showToast('Catalog JSON copied to clipboard');
+  } catch {
+    // clipboard blocked — offer it as a file
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'family-grocery.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
 </script>
 
 <template>
@@ -82,6 +102,12 @@ async function resetLocal() {
     </section>
 
     <section class="grp">
+      <h2 class="grp__label">Catalog</h2>
+      <button class="link" @click="importOpen = true">Import stores &amp; products</button>
+      <button class="link" @click="exportJson">Export as JSON</button>
+    </section>
+
+    <section class="grp">
       <h2 class="grp__label">Account</h2>
       <button class="link" @click="signOut">Sign out</button>
       <button class="link link--danger" @click="resetLocal">
@@ -90,6 +116,8 @@ async function resetLocal() {
     </section>
 
     <p class="ver">Family Grocery · dev build</p>
+
+    <ImportSheet v-model:open="importOpen" />
   </BottomSheet>
 </template>
 

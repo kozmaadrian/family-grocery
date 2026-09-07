@@ -42,9 +42,17 @@ src/
 shared/types.ts       types shared between client and Worker
 worker/               Cloudflare Worker — /api/{health,setup,auth,sync}
 migrations/            D1 SQL migrations
-scripts/              PWA icon generation
+scripts/              PWA icon generation; seed.mjs (demo data via /api/sync)
 test/                 Vitest (@cloudflare/vitest-pool-workers)
 ```
+
+## Bulk data
+
+- **In-app:** Settings → Catalog → *Import* accepts JSON or a plain list of
+  product names (one per line, optionally `name, qty, note`); *Export as JSON*
+  copies the whole catalog and round-trips back through Import.
+- **Dev seed:** with the servers running, `npm run seed -- --fresh` loads a demo
+  catalog (`--fresh` wipes first).
 
 ## Deploy (first time)
 
