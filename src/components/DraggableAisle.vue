@@ -54,10 +54,10 @@ watch(list, (l) => {
         @toggle="emit('toggle', it.product.id, !it.needed)"
       />
       <button class="arr__body" @click="emit('open', it.product.id)">
-        <span class="arr__line">
-          <span class="arr__name" :class="{ 'is-on': it.needed }">{{ it.product.name }}</span>
-          <NoteLabel v-if="it.product.note" :text="it.product.note" />
+        <span class="arr__name" :class="{ 'is-on': it.needed }">{{ it.product.name }}</span>
+        <span v-if="it.product.default_qty || it.product.note" class="arr__aside">
           <QtyChip v-if="it.product.default_qty" :qty="it.product.default_qty" />
+          <NoteLabel v-if="it.product.note" :text="it.product.note" />
         </span>
       </button>
       <button class="arr__grip" aria-label="Reorder" @click.stop>
@@ -83,17 +83,12 @@ watch(list, (l) => {
   flex: 1;
   min-width: 0;
   display: flex;
+  align-items: center;
+  gap: var(--s-3);
   border: none;
   background: none;
   text-align: left;
   padding: 0;
-}
-.arr__line {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: var(--s-3);
 }
 .arr__name {
   flex: 1;
@@ -105,6 +100,14 @@ watch(list, (l) => {
 .arr__name.is-on {
   color: var(--c-accent);
   font-weight: 600;
+}
+.arr__aside {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  max-width: 46%;
 }
 .arr__grip {
   flex: none;
