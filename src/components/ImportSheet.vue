@@ -11,12 +11,6 @@ const text = ref('');
 const busy = ref(false);
 const result = ref<ImportSummary | null>(null);
 
-async function onFile(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  text.value = await file.text();
-}
-
 async function run() {
   if (busy.value || !text.value.trim()) return;
   busy.value = true;
@@ -57,6 +51,9 @@ async function run() {
       <code>name, qty, note</code>). Existing stores and products are matched by
       name, not duplicated.
     </p>
+    <p class="hint hint--tip">
+      Tip: Export first, edit that JSON, paste it back.
+    </p>
 
     <details class="fmt">
       <summary>JSON format</summary>
@@ -74,15 +71,10 @@ async function run() {
     <textarea
       v-model="text"
       class="ta"
-      rows="7"
+      rows="8"
       placeholder="Paste here…"
       spellcheck="false"
     />
-
-    <label class="file">
-      <input type="file" accept=".json,.txt,.csv" @change="onFile" />
-      Choose a file instead
-    </label>
 
     <div v-if="result" class="res">
       <span v-if="result.storesAdded">+{{ result.storesAdded }} stores</span>
@@ -130,8 +122,13 @@ async function run() {
   font-size: var(--t-caption);
   line-height: 1.5;
 }
+.hint--tip {
+  margin-top: calc(-1 * var(--s-2));
+  color: var(--c-text-faint);
+}
 .ta {
   width: 100%;
+  margin-bottom: var(--s-3);
   padding: var(--s-3);
   border: 1px solid var(--c-border);
   border-radius: var(--r-md);
@@ -143,19 +140,6 @@ async function run() {
 .ta:focus {
   outline: none;
   border-color: var(--c-accent);
-}
-.file {
-  display: block;
-  margin: var(--s-3) 0;
-  font-size: var(--t-body-sm);
-  color: var(--c-accent);
-  font-weight: 600;
-}
-.file input {
-  display: block;
-  margin-top: var(--s-1);
-  font-weight: 400;
-  color: var(--c-text-dim);
 }
 .res {
   display: flex;
