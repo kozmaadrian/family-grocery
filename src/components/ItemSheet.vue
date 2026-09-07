@@ -22,6 +22,10 @@ const currentArea = computed(() => {
   return placement(props.productId, props.storeId)?.area_id ?? null;
 });
 
+// what the row shows: per-trip value, else the product default
+const effectiveQty = computed(() => need.value?.qty || product.value?.default_qty || '');
+const effectiveNote = computed(() => need.value?.note || product.value?.note || '');
+
 const form = reactive({ qty: '', note: '' });
 const hydrating = ref(false);
 watch(
@@ -29,13 +33,20 @@ watch(
   async ([open]) => {
     if (!open) return;
     hydrating.value = true;
-    form.qty = need.value?.qty ?? '';
-    form.note = need.value?.note ?? '';
+    form.qty = effectiveQty.value;
+    form.note = effectiveNote.value;
     await nextTick();
     hydrating.value = false;
   },
   { immediate: true },
 );
+
+/** store a per-need override only when it differs from the product default */
+function override(value: string, productDefault: string | null | undefined): string | null {
+  const v = value.trim();
+  if (!v) return null;
+  return v === (productDefault ?? '').trim() ? null : v;
+}
 
 let t: ReturnType<typeof setTimeout> | null = null;
 watch(
@@ -45,8 +56,8 @@ watch(
     if (t) clearTimeout(t);
     t = setTimeout(() => {
       void updateNeed(props.productId!, {
-        qty: f.qty.trim() || null,
-        note: f.note.trim() || null,
+        qty: override(f.qty, product.value?.default_qty),
+        note: override(f.note, product.value?.note),
       });
     }, 350);
   },
