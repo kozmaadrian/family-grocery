@@ -90,11 +90,10 @@ checklist.
 
 ### Lifecycle rules
 
-- **Quick-add on the Shop screen** (store S selected): create the product if new,
-  create a `Need`, and create a `Placement` at S in its **Unsorted** area (a
-  built-in area pinned last). The item is immediately on the list.
-- **Toggle "needed" from the Products screen**: create/tombstone the `Need` only.
-  No placement is created.
+- **Add / remove on the Products screen**: the +/− control creates or tombstones
+  the `Need`. On the Products catalog "buy at" toggles (or creating a product
+  with stores selected) also create the `Placement`; a bare add with no store
+  leaves the product unplaced (shows under *Not sold here*).
 - **Check off** an item → `Need.status = in_cart` (short "in cart — Undo" toast).
 - **Finish shopping** → after a confirm sheet, tombstone every need on the current
   store's list — `in_cart` **and** `needed` (i.e. any need whose product is placed
@@ -145,7 +144,7 @@ A full Material / component framework (Vuetify) and mobile meta-frameworks
 (Quasar, Ionic) were considered and rejected: the app's signature interactions
 (path reordering, swipe, sheets, pull-to-refresh) aren't what those libraries
 provide, and their default look would need heavy re-theming. Everything else —
-tab bar, rows, toasts, quick-add bar, pull-to-refresh, progress — is hand-rolled.
+tab bar, rows, toasts, pull-to-refresh, progress — is hand-rolled.
 | Backend | **Cloudflare Worker (module format)** | Current platform, free. |
 | Database | **Cloudflare D1 (SQLite)** | Relational model fits exactly; delta-sync query is a simple indexed `WHERE updated_at > ?`. Free tier is ample for a family. |
 | Hosting | Worker static assets (`[assets]`) | One deploy, one origin. |
@@ -367,9 +366,8 @@ the server reports no password set, switches to "Set a family password".
   - Long-press row → **Item sheet**: qty, note, move to area (this store), remove.
   - **No reordering here** — the walking order is arranged on the Products tab
     (below). The Shop screen is read-only for order.
-- **Quick-add bar** — sticky above the keyboard. Type → autocomplete against
-  existing products → Enter adds a Need + Placement at the current store's
-  Unsorted, keeps focus for the next item.
+- **No add control here.** Items are put on the list from the Products tab; the
+  Shop screen is the checklist.
 - **Finish shopping** — a button below the list, shown whenever the store's list
   is non-empty. Opens a confirm sheet ("clears all N — X in cart, Y not bought"),
   then clears the whole store list with an 8s Undo toast.
@@ -418,12 +416,12 @@ the server reports no password set, switches to "Set a family password".
 |---|---|
 | Tap targets | ≥ 44×44 pt; list rows ≥ 56 pt. |
 | Bottom sheets | Handle, swipe-down + backdrop dismiss, spring in/out, safe-area padding, focus trap, scroll-lock behind. |
-| Toasts | Bottom, above the quick-add bar and safe area; 5 s; one "Undo"; swipe to dismiss. |
+| Toasts | Bottom, above the tab bar and safe area; 5 s; one "Undo"; cleared when a sheet opens; sit below sheets. |
 | Drag reorder | 150 ms long-press to lift; `navigator.vibrate(10)` where supported; edge auto-scroll; drop animates; fractional position write. |
-| Keyboard | Quick-add bar and sheets track `visualViewport`; content `padding-bottom` follows the keyboard. |
+| Keyboard | Sheets track `visualViewport`; content `padding-bottom` follows the keyboard. |
 | Header | Collapses on scroll-down, restores on scroll-up. Pinned progress bar. |
 | Pull-to-refresh | Only at scroll-top; custom indicator; triggers sync. |
-| Safe areas | `env(safe-area-inset-*)` on header, tab bar, sheets, toasts, quick-add bar. `viewport-fit=cover`. |
+| Safe areas | `env(safe-area-inset-*)` on header, tab bar, sheets, toasts. `viewport-fit=cover`. |
 | Motion | 150–250 ms ease-out; springs for check + drag. Respect `prefers-reduced-motion`. |
 | Feedback | Every interactive element has an `:active` state (scale 0.97 / opacity). |
 | A11y | `:focus-visible` rings, ARIA labels on icon buttons, ≥ 4.5:1 contrast, semantic roles on lists/checkboxes. |
@@ -466,8 +464,8 @@ the server reports no password set, switches to "Set a family password".
 ## 14. Edge cases & decisions
 
 - **Need with no placement anywhere** ("birthday candles", added from Products):
-  shows in "Any store" mode and in every store's *Not sold here*. Quick-adding
-  from the Shop screen avoids this by always creating a placement.
+  shows in "Any store" mode and in every store's *Not sold here* until you
+  set a "buy at" store for it.
 - **"Any store" mode**: needs grouped by their first placement's store, then
   Unassigned. Planning aid, not an in-store view.
 - **Same area name in two stores**: independent rows, fine.
@@ -502,7 +500,7 @@ drawn up at the start of each phase.
 | **2 — Client data layer** | IndexedDB mirror via `idb`; repo (typed CRUD, dirty queue); sync engine (push queued / pull since cursor / merge, settle against server ts); triggers launch/focus/online/debounce; pending count. | ✅ |
 | **3 — App shell** | vue-router + bottom tab bar; safe-area layout; theme tokens + light/dark + override; header scroll-collapse; toast system with Undo; Reka UI bottom sheet; Login screen + token flow. | ✅ |
 | **4 — Products & Stores** | Products list + search + Product sheet (name/qty/note autosave, buy-at toggles, per-store aisle); Stores list; Store screen with aisle CRUD + long-press **drag-to-reorder**. | ✅ |
-| **5 — Shop screen** | Store switcher + coverage; aisle-grouped ordered checklist; collapsible groups; progress; check-off → In cart; Finish shopping + undo; quick-add bar (VisualViewport + autocomplete); swipe-to-remove; Item sheet; Not-sold-here. | ✅ |
+| **5 — Shop screen** | Store switcher + coverage; aisle-grouped ordered checklist; collapsible groups; progress; check-off → In cart; Finish shopping + undo; swipe-to-remove; Item sheet; Not-sold-here. Adding items is done on the Products tab. | ✅ |
 | **6 — Reordering** | Per-aisle long-press drag-to-reorder, persisted to `placement.position`. Lives on the **Products tab** (store selected), not the Shop tab — the Shop screen stays a read-only checklist. Cross-aisle moves via the item/product sheet's aisle picker. | ✅ |
 | **7 — PWA** | `vite-plugin-pwa` (Workbox generateSW): precache shell, SPA fallback, `/api/*` NetworkOnly, autoUpdate; manifest + 192/512/maskable icons; iOS meta; install hint in Settings. | ✅ |
 | **8 — Polish & QA** | Global sync/offline status chip; deleted-store fallback; distinct empty states; hydration-guarded autosave; aria labels; light/dark verified. | ✅ |

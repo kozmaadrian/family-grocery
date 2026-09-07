@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue';
 import ScreenHeader from '@/components/ScreenHeader.vue';
 import ShopRow from '@/components/ShopRow.vue';
-import QuickAddBar from '@/components/QuickAddBar.vue';
 import StorePickerSheet from '@/components/StorePickerSheet.vue';
 import ItemSheet from '@/components/ItemSheet.vue';
 import ConfirmSheet from '@/components/ConfirmSheet.vue';
@@ -167,12 +166,12 @@ const empty = computed(
     <div class="body">
       <p v-if="empty" class="empty">
         <template v-if="!hasStores">
-          Add the stores you shop at (Stores tab) to get an aisle-by-aisle list.<br />
-          For now, just add what you need below.
+          Add the stores you shop at on the Stores tab to get an aisle-by-aisle
+          list.
         </template>
         <template v-else>
           Nothing to buy{{ storeId ? ' here' : '' }} yet.<br />
-          Add items below, or tick products on the Products tab.
+          Add items from the Products tab.
         </template>
       </p>
 
@@ -229,8 +228,6 @@ const empty = computed(
         </div>
       </section>
     </div>
-
-    <QuickAddBar :store-id="storeId" />
 
     <StorePickerSheet
       v-model:open="pickerOpen"
@@ -333,7 +330,7 @@ const empty = computed(
 }
 .body {
   flex: 1;
-  padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 64px);
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--s-4));
 }
 .empty {
   color: var(--c-text-dim);
