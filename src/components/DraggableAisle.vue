@@ -56,10 +56,8 @@ watch(list, (l) => {
       <button class="arr__body" @click="emit('open', it.product.id)">
         <span class="arr__line">
           <span class="arr__name" :class="{ 'is-on': it.needed }">{{ it.product.name }}</span>
+          <NoteLabel v-if="it.product.note" :text="it.product.note" />
           <QtyChip v-if="it.product.default_qty" :qty="it.product.default_qty" />
-        </span>
-        <span v-if="it.product.note" class="arr__line arr__line--sub">
-          <NoteLabel :text="it.product.note" />
         </span>
       </button>
       <button class="arr__grip" aria-label="Reorder" @click.stop>
@@ -85,23 +83,20 @@ watch(list, (l) => {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
   border: none;
   background: none;
   text-align: left;
   padding: 0;
 }
 .arr__line {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: var(--s-3);
 }
-.arr__line--sub {
-  justify-content: flex-end;
-}
 .arr__name {
+  flex: 1;
   min-width: 0;
   font-size: var(--t-body);
   overflow: hidden;

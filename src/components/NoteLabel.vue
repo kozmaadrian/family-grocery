@@ -10,7 +10,7 @@ defineProps<{ text: string }>();
 .note {
   flex: none;
   min-width: 0;
-  max-width: 60%;
+  max-width: 100%;
   font-size: var(--t-caption);
   color: var(--c-text-dim);
   overflow: hidden;

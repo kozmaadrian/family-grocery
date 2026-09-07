@@ -108,20 +108,17 @@ function openEdit(id: string) {
           :label="isNeeded(p.id) ? `Remove ${p.name} from the list` : `Add ${p.name} to the list`"
           @toggle="setNeeded(p.id, !isNeeded(p.id))"
         />
-        <button class="row__main" @click="openEdit(p.id)">
-          <span class="row__line">
+        <button class="row__body" @click="openEdit(p.id)">
+          <span class="row__main">
             <span class="row__name" :class="{ 'is-on': isNeeded(p.id) }">{{ p.name }}</span>
-            <QtyChip v-if="p.default_qty" :qty="p.default_qty" />
-          </span>
-          <span
-            v-if="storesForProduct(p.id).length || p.note"
-            class="row__line row__line--sub"
-          >
             <span v-if="storesForProduct(p.id).length" class="row__meta">
               <span v-for="sid in storesForProduct(p.id)" :key="sid" class="chip">
                 {{ storeName(sid) }}
               </span>
             </span>
+          </span>
+          <span v-if="p.default_qty || p.note" class="row__aside">
+            <QtyChip v-if="p.default_qty" :qty="p.default_qty" />
             <NoteLabel v-if="p.note" :text="p.note" />
           </span>
         </button>
@@ -215,25 +212,23 @@ function openEdit(id: string) {
   min-height: 56px;
   border-bottom: 1px solid var(--c-border);
 }
+.row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+}
 .row__main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 0;
-  border: none;
-  background: none;
-  text-align: left;
-}
-.row__line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s-3);
-}
-.row__line--sub {
-  justify-content: flex-end;
 }
 .row__name {
   min-width: 0;
@@ -247,13 +242,20 @@ function openEdit(id: string) {
 }
 .row__meta {
   min-width: 0;
-  margin-right: auto;
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   font-size: var(--t-caption);
   color: var(--c-text-dim);
+}
+.row__aside {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  max-width: 46%;
 }
 .chip {
   color: var(--c-text-dim);

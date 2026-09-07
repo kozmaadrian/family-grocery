@@ -17,6 +17,7 @@ const emit = defineEmits<{ toggle: []; remove: []; open: [] }>();
 // per-trip value wins, else the product's default
 const qty = computed(() => props.item.need.qty || props.item.product.default_qty || '');
 const note = computed(() => props.item.need.note || props.item.product.note || '');
+const hasChips = computed(() => Boolean(props.showStores && props.item.storeNames.length));
 
 // check-off animation: fill + strike, then (optionally) collapse away
 type Phase = 'idle' | 'checking' | 'leaving';
@@ -102,17 +103,14 @@ function onPressEnd() {
       />
 
       <button class="row__body" @click="emit('open')">
-        <span class="row__line">
+        <span class="row__main">
           <span class="row__name" :class="{ 'is-done': shownChecked }">{{ item.product.name }}</span>
-          <QtyChip v-if="qty" :qty="qty" :dim="shownChecked" />
-        </span>
-        <span
-          v-if="(showStores && item.storeNames.length) || note"
-          class="row__line row__line--sub"
-        >
-          <span v-if="showStores && item.storeNames.length" class="row__sub">
+          <span v-if="hasChips" class="row__sub">
             <span v-for="s in item.storeNames" :key="s" class="chip">{{ s }}</span>
           </span>
+        </span>
+        <span v-if="qty || note" class="row__aside">
+          <QtyChip v-if="qty" :qty="qty" :dim="shownChecked" />
           <NoteLabel v-if="note" :text="note" />
         </span>
       </button>
@@ -166,21 +164,19 @@ function onPressEnd() {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: var(--s-3);
   border: none;
   background: none;
   text-align: left;
   padding: 0;
 }
-.row__line {
+.row__main {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s-3);
-}
-.row__line--sub {
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 3px;
 }
 .row__name {
   min-width: 0;
@@ -194,13 +190,20 @@ function onPressEnd() {
 }
 .row__sub {
   min-width: 0;
-  margin-right: auto;
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   font-size: var(--t-caption);
   color: var(--c-text-dim);
+}
+.row__aside {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  max-width: 46%;
 }
 .chip {
   background: var(--c-surface-2);
