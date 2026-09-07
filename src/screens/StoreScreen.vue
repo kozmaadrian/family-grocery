@@ -37,11 +37,10 @@ dragAndDrop<Area>({
   dragHandle: '.area__grip',
 });
 
-// keep the drag list in step with external changes (add / delete / sync)
+// keep the drag list in step with external changes (add / delete / rename / sync)
+const sig = (list: Area[]) => list.map((x) => `${x.id}:${x.name}:${x.position}`).join('|');
 watch(sortedAreas, (fresh) => {
-  const a = fresh.map((x) => x.id).join(',');
-  const b = dragAreas.value.map((x) => x.id).join(',');
-  if (a !== b) dragAreas.value = [...fresh];
+  if (sig(fresh) !== sig(dragAreas.value)) dragAreas.value = [...fresh];
 });
 
 // persist a user reorder
