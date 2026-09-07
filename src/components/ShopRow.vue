@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import type { ShopItem } from '@/lib/shopping';
 import CheckCircle from './CheckCircle.vue';
+import QtyChip from './QtyChip.vue';
+import NoteLabel from './NoteLabel.vue';
 
 const props = defineProps<{
   item: ShopItem;
@@ -100,18 +102,20 @@ function onPressEnd() {
       />
 
       <button class="row__body" @click="emit('open')">
-        <span class="row__name" :class="{ 'is-done': shownChecked }">{{ item.product.name }}</span>
-        <span v-if="showStores && item.storeNames.length" class="row__sub">
-          <span v-for="s in item.storeNames" :key="s" class="chip">{{ s }}</span>
+        <span class="row__line">
+          <span class="row__name" :class="{ 'is-done': shownChecked }">{{ item.product.name }}</span>
+          <QtyChip v-if="qty" :qty="qty" :dim="shownChecked" />
+        </span>
+        <span
+          v-if="(showStores && item.storeNames.length) || note"
+          class="row__line row__line--sub"
+        >
+          <span v-if="showStores && item.storeNames.length" class="row__sub">
+            <span v-for="s in item.storeNames" :key="s" class="chip">{{ s }}</span>
+          </span>
+          <NoteLabel v-if="note" :text="note" />
         </span>
       </button>
-
-      <div v-if="qty || note" class="row__aside">
-        <span v-if="note" class="row__note">{{ note }}</span>
-        <span v-if="qty" class="row__qty" :class="{ 'is-done': shownChecked }">
-          ×&nbsp;{{ qty }}
-        </span>
-      </div>
     </div>
   </div>
 </template>
@@ -163,57 +167,40 @@ function onPressEnd() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   border: none;
   background: none;
   text-align: left;
   padding: 0;
 }
+.row__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.row__line--sub {
+  justify-content: flex-end;
+}
 .row__name {
+  min-width: 0;
   font-size: var(--t-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .row__name.is-done {
   color: var(--c-text-faint);
   text-decoration: line-through;
 }
 .row__sub {
+  min-width: 0;
+  margin-right: auto;
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   font-size: var(--t-caption);
   color: var(--c-text-dim);
-}
-.row__aside {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  max-width: 44%;
-  text-align: right;
-}
-.row__qty {
-  flex: none;
-  padding: 3px 12px;
-  border-radius: var(--r-full);
-  background: var(--c-accent-soft);
-  color: var(--c-accent);
-  font-size: var(--t-body);
-  font-weight: 800;
-  white-space: nowrap;
-}
-.row__qty.is-done {
-  background: var(--c-surface-2);
-  color: var(--c-text-faint);
-}
-.row__note {
-  font-size: var(--t-caption);
-  color: var(--c-text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
 }
 .chip {
   background: var(--c-surface-2);

@@ -3,6 +3,8 @@ import { computed, ref } from 'vue';
 import ScreenHeader from '@/components/ScreenHeader.vue';
 import FabButton from '@/components/FabButton.vue';
 import CheckCircle from '@/components/CheckCircle.vue';
+import QtyChip from '@/components/QtyChip.vue';
+import NoteLabel from '@/components/NoteLabel.vue';
 import ProductSheet from '@/components/ProductSheet.vue';
 import StorePickerSheet from '@/components/StorePickerSheet.vue';
 import DraggableAisle from '@/components/DraggableAisle.vue';
@@ -107,18 +109,22 @@ function openEdit(id: string) {
           @toggle="setNeeded(p.id, !isNeeded(p.id))"
         />
         <button class="row__main" @click="openEdit(p.id)">
-          <span class="row__name" :class="{ 'is-on': isNeeded(p.id) }">{{ p.name }}</span>
-          <span v-if="storesForProduct(p.id).length" class="row__meta">
-            <span v-for="sid in storesForProduct(p.id)" :key="sid" class="chip">
-              {{ storeName(sid) }}
+          <span class="row__line">
+            <span class="row__name" :class="{ 'is-on': isNeeded(p.id) }">{{ p.name }}</span>
+            <QtyChip v-if="p.default_qty" :qty="p.default_qty" />
+          </span>
+          <span
+            v-if="storesForProduct(p.id).length || p.note"
+            class="row__line row__line--sub"
+          >
+            <span v-if="storesForProduct(p.id).length" class="row__meta">
+              <span v-for="sid in storesForProduct(p.id)" :key="sid" class="chip">
+                {{ storeName(sid) }}
+              </span>
             </span>
+            <NoteLabel v-if="p.note" :text="p.note" />
           </span>
         </button>
-
-        <div v-if="p.default_qty || p.note" class="row__aside">
-          <span v-if="p.note" class="row__note">{{ p.note }}</span>
-          <span v-if="p.default_qty" class="row__qty">×&nbsp;{{ p.default_qty }}</span>
-        </div>
       </div>
     </div>
 
@@ -220,14 +226,28 @@ function openEdit(id: string) {
   background: none;
   text-align: left;
 }
+.row__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.row__line--sub {
+  justify-content: flex-end;
+}
 .row__name {
+  min-width: 0;
   font-size: var(--t-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .row__name.is-on {
   color: var(--c-accent);
   font-weight: 600;
 }
 .row__meta {
+  min-width: 0;
+  margin-right: auto;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -240,32 +260,5 @@ function openEdit(id: string) {
   background: var(--c-surface-2);
   padding: 1px 8px;
   border-radius: var(--r-full);
-}
-.row__aside {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  max-width: 44%;
-  text-align: right;
-}
-.row__qty {
-  flex: none;
-  padding: 3px 11px;
-  border-radius: var(--r-full);
-  background: var(--c-surface-2);
-  color: var(--c-text);
-  font-size: var(--t-body-sm);
-  font-weight: 700;
-  white-space: nowrap;
-}
-.row__note {
-  font-size: var(--t-caption);
-  color: var(--c-text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
 }
 </style>
