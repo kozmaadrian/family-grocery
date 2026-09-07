@@ -10,6 +10,7 @@ const emit = defineEmits<{ toggle: [] }>();
     class="check"
     :class="{
       'is-on': checked && variant === 'check',
+      'is-pending': variant === 'check' && !checked,
       'is-add': variant === 'add' && !checked,
       'is-remove': variant === 'add' && checked,
     }"
@@ -72,6 +73,10 @@ const emit = defineEmits<{ toggle: [] }>();
   display: block;
   /* optical centring — a checkmark reads slightly low-left of geometric centre */
   transform: translate(0.5px, -0.5px);
+}
+.check.is-pending {
+  border-style: dashed;
+  border-color: var(--c-text-faint);
 }
 .check.is-add {
   border-color: var(--c-accent);
