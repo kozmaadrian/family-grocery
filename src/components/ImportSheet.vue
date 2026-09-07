@@ -1,34 +1,43 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import BottomSheet from './BottomSheet.vue';
-import { importData, parseImport, type ImportSummary } from '@/lib/portable';
+import { clearCatalog, importData, readImport, type ImportSummary } from '@/lib/portable';
 import { showToast } from '@/lib/toast';
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{ 'update:open': [value: boolean] }>();
 
 const text = ref('');
+const replace = ref(false);
 const busy = ref(false);
 const result = ref<ImportSummary | null>(null);
+const problems = ref<string[]>([]);
+
+function reset() {
+  result.value = null;
+  problems.value = [];
+  replace.value = false;
+}
 
 async function run() {
   if (busy.value || !text.value.trim()) return;
   busy.value = true;
   result.value = null;
+  problems.value = [];
   try {
-    const data = parseImport(text.value);
-    if (!data.products?.length && !data.stores?.length) {
-      showToast('Nothing recognised to import');
+    const parsed = readImport(text.value);
+    if (!parsed.ok) {
+      problems.value = parsed.errors;
       return;
     }
-    result.value = await importData(data);
+    if (replace.value) await clearCatalog();
+    result.value = await importData(parsed.data);
+    problems.value = [...parsed.warnings, ...result.value.errors];
     const s = result.value;
-    const total =
-      s.storesAdded + s.aislesAdded + s.productsAdded + s.productsUpdated + s.placementsAdded;
-    showToast(total ? `Imported — ${s.productsAdded + s.productsUpdated} products` : 'No changes');
+    showToast(`Imported — ${s.productsAdded} new, ${s.productsUpdated} updated`);
     text.value = '';
   } catch (err) {
-    showToast(err instanceof Error ? err.message : 'Import failed');
+    problems.value = [err instanceof Error ? err.message : 'Import failed'];
   } finally {
     busy.value = false;
   }
@@ -42,7 +51,7 @@ async function run() {
     @update:open="
       (v) => {
         emit('update:open', v);
-        if (!v) result = null;
+        if (!v) reset();
       }
     "
   >
@@ -82,11 +91,22 @@ async function run() {
       <span v-if="result.productsAdded">+{{ result.productsAdded }} products</span>
       <span v-if="result.productsUpdated">{{ result.productsUpdated }} updated</span>
       <span v-if="result.placementsAdded">+{{ result.placementsAdded }} placements</span>
-      <p v-for="(e, i) in result.errors" :key="i" class="res__err">{{ e }}</p>
+      <span v-if="!result.storesAdded && !result.aislesAdded && !result.productsAdded && !result.productsUpdated && !result.placementsAdded">
+        No changes
+      </span>
     </div>
 
-    <button class="go" :disabled="busy || !text.trim()" @click="run">
-      {{ busy ? 'Importing…' : 'Import' }}
+    <ul v-if="problems.length" class="probs">
+      <li v-for="(p, i) in problems" :key="i">{{ p }}</li>
+    </ul>
+
+    <label class="replace">
+      <input type="checkbox" v-model="replace" />
+      Clear all current stores &amp; products first (replace)
+    </label>
+
+    <button class="go" :class="{ 'go--danger': replace }" :disabled="busy || !text.trim()" @click="run">
+      {{ busy ? 'Importing…' : replace ? 'Replace & import' : 'Import' }}
     </button>
   </BottomSheet>
 </template>
@@ -150,11 +170,26 @@ async function run() {
   font-weight: 600;
   color: var(--c-accent);
 }
-.res__err {
-  flex-basis: 100%;
-  margin: 0;
+.probs {
+  margin: 0 0 var(--s-3);
+  padding-left: var(--s-4);
   color: var(--c-danger);
-  font-weight: 400;
+  font-size: var(--t-body-sm);
+  line-height: 1.5;
+}
+.replace {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+  font-size: var(--t-body-sm);
+  color: var(--c-text-dim);
+}
+.replace input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--c-danger);
+  flex: none;
 }
 .go {
   width: 100%;
@@ -167,5 +202,9 @@ async function run() {
 }
 .go:disabled {
   opacity: 0.45;
+}
+.go--danger {
+  background: var(--c-danger);
+  color: #fff;
 }
 </style>

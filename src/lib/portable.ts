@@ -1,7 +1,9 @@
 // Import / export the catalog as plain JSON. Everything created here syncs like
 // any other local change.
 
+import { ENTITY_TABLES } from '@shared/types';
 import { useDataStore } from '@/stores/data';
+import type { RowRef } from './repo';
 import { needId, placementId } from './ids';
 import {
   areasForStore,
@@ -43,53 +45,147 @@ export interface ImportSummary {
 
 const norm = (s: string) => s.trim().toLowerCase();
 
+export type ReadResult =
+  | { ok: true; data: PortableData; warnings: string[] }
+  | { ok: false; errors: string[] };
+
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const looksLikeJson = (t: string) => /^[[{]/.test(t);
+
 /**
- * Accepts: a PortableData object, an array (products — strings or objects),
- * or a newline-separated string of product names (optionally "name, qty, note").
+ * Parse + validate import text. Returns typed errors instead of throwing so the
+ * UI can show them and import nothing on a bad file.
+ *
+ * Accepts: a JSON object `{ stores?, products? }`, a JSON array of product
+ * names/objects, or plain text (one product per line, `name, qty, note`).
  */
-export function parseImport(input: string | unknown): PortableData {
-  let value: unknown = input;
-  if (typeof input === 'string') {
-    const text = input.trim();
-    if (!text) return {};
-    try {
-      value = JSON.parse(text);
-    } catch {
-      // plain text: one product per line, "name, qty, note"
-      const products = text
-        .split('\n')
-        .map((l) => l.trim())
-        .filter(Boolean)
-        .map((line) => {
-          const [name, qty, note] = line.split(',').map((p) => p.trim());
-          return { name, qty: qty || null, note: note || null } as PortableProduct;
-        })
-        .filter((p) => p.name);
-      return { products };
-    }
+export function readImport(input: string): ReadResult {
+  const text = input.trim();
+  if (!text) return { ok: false, errors: ['Nothing to import — paste some data first.'] };
+
+  // plain text (only when it clearly isn't JSON)
+  if (!looksLikeJson(text)) {
+    const products: PortableProduct[] = [];
+    text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .forEach((line) => {
+        const [name, qty, note] = line.split(',').map((p) => p.trim());
+        if (name) products.push({ name, qty: qty || null, note: note || null });
+      });
+    if (!products.length) return { ok: false, errors: ['No product names found.'] };
+    return { ok: true, data: { products }, warnings: [] };
   }
 
-  const asProduct = (p: unknown): PortableProduct | null => {
-    if (typeof p === 'string') return p.trim() ? { name: p.trim() } : null;
-    if (p && typeof p === 'object' && typeof (p as PortableProduct).name === 'string') {
-      return (p as PortableProduct).name.trim() ? (p as PortableProduct) : null;
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch (e) {
+    return { ok: false, errors: [`Invalid JSON: ${(e as Error).message}`] };
+  }
+
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  const readProduct = (p: unknown, where: string): PortableProduct | null => {
+    if (isStr(p)) return p.trim() ? { name: p.trim() } : null;
+    if (!p || typeof p !== 'object' || Array.isArray(p)) {
+      errors.push(`${where}: expected a name or an object`);
+      return null;
     }
-    return null;
+    const o = p as Record<string, unknown>;
+    if (!isStr(o.name) || !o.name.trim()) {
+      errors.push(`${where}: missing "name"`);
+      return null;
+    }
+    for (const k of ['qty', 'note'] as const) {
+      if (o[k] !== undefined && o[k] !== null && !isStr(o[k])) {
+        errors.push(`${where} "${o.name}": "${k}" must be text or null`);
+      }
+    }
+    if (o.needed !== undefined && typeof o.needed !== 'boolean') {
+      errors.push(`${where} "${o.name}": "needed" must be true/false`);
+    }
+    if (o.stores !== undefined && (!Array.isArray(o.stores) || !o.stores.every(isStr))) {
+      errors.push(`${where} "${o.name}": "stores" must be a list of store names`);
+    }
+    return {
+      name: o.name.trim(),
+      qty: isStr(o.qty) ? o.qty : o.qty === null ? null : undefined,
+      note: isStr(o.note) ? o.note : o.note === null ? null : undefined,
+      needed: typeof o.needed === 'boolean' ? o.needed : undefined,
+      stores: Array.isArray(o.stores) ? o.stores.filter(isStr) : undefined,
+    };
   };
 
+  const data: PortableData = {};
+
   if (Array.isArray(value)) {
-    return { products: value.map(asProduct).filter((p): p is PortableProduct => p !== null) };
+    data.products = value
+      .map((p, i) => readProduct(p, `products[${i}]`))
+      .filter((p): p is PortableProduct => p !== null);
+  } else if (value && typeof value === 'object') {
+    const v = value as Record<string, unknown>;
+    for (const key of Object.keys(v)) {
+      if (key !== 'stores' && key !== 'products') warnings.push(`ignored unknown field "${key}"`);
+    }
+    if (v.stores !== undefined) {
+      if (!Array.isArray(v.stores)) {
+        errors.push('"stores" must be a list');
+      } else {
+        data.stores = [];
+        v.stores.forEach((s, i) => {
+          if (!s || typeof s !== 'object' || !isStr((s as PortableStore).name) || !(s as PortableStore).name.trim()) {
+            errors.push(`stores[${i}]: missing "name"`);
+            return;
+          }
+          const so = s as Record<string, unknown>;
+          if (so.aisles !== undefined && (!Array.isArray(so.aisles) || !so.aisles.every(isStr))) {
+            errors.push(`store "${so.name}": "aisles" must be a list of names`);
+          }
+          data.stores!.push({
+            name: (so.name as string).trim(),
+            aisles: Array.isArray(so.aisles) ? so.aisles.filter(isStr) : undefined,
+          });
+        });
+      }
+    }
+    if (v.products !== undefined) {
+      if (!Array.isArray(v.products)) {
+        errors.push('"products" must be a list');
+      } else {
+        data.products = v.products
+          .map((p, i) => readProduct(p, `products[${i}]`))
+          .filter((p): p is PortableProduct => p !== null);
+      }
+    }
+  } else {
+    return { ok: false, errors: ['Expected a JSON object or array.'] };
   }
-  if (value && typeof value === 'object') {
-    const v = value as PortableData;
-    return {
-      stores: Array.isArray(v.stores) ? v.stores.filter((s) => s?.name?.trim()) : undefined,
-      products: Array.isArray(v.products)
-        ? v.products.map(asProduct).filter((p): p is PortableProduct => p !== null)
-        : undefined,
-    };
+
+  if (!data.stores?.length && !data.products?.length) {
+    errors.push('Nothing to import — no "stores" or "products".');
   }
-  return {};
+  // cap to keep a paste from blowing up the DB
+  const total = (data.stores?.length ?? 0) + (data.products?.length ?? 0);
+  if (total > 2000) errors.push(`Too many rows (${total}); import at most 2000 at a time.`);
+
+  if (errors.length) return { ok: false, errors };
+  return { ok: true, data, warnings };
+}
+
+/** Tombstone every store, aisle, product, placement and need. Syncs like any delete. */
+export async function clearCatalog(): Promise<number> {
+  const store = useDataStore();
+  const refs: RowRef[] = [];
+  for (const table of ENTITY_TABLES) {
+    for (const row of store.active(table)) {
+      refs.push({ table, row: { ...row, deleted: 1 } } as RowRef);
+    }
+  }
+  if (refs.length) await store.applyLocal(refs);
+  return refs.length;
 }
 
 export async function importData(data: PortableData): Promise<ImportSummary> {
