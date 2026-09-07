@@ -17,6 +17,8 @@
   --c-scrim: rgba(10, 12, 14, 0.42);
   --c-toast-bg: #1f2733;
   --c-toast-fg: #f6f7f8;
+  --c-accent-2: #b07d13;
+  --c-accent-2-soft: #faf0d8;
 
   /* radius */
   --r-sm: 8px;
@@ -79,6 +81,8 @@
     --c-scrim: rgba(0, 0, 0, 0.58);
     --c-toast-bg: #2b3230;
     --c-toast-fg: #edefee;
+    --c-accent-2: #e6b13e;
+    --c-accent-2-soft: #3a3016;
     --e-1: 0 1px 2px rgba(0, 0, 0, 0.4);
     --e-2: 0 4px 14px rgba(0, 0, 0, 0.5);
     --e-up: 0 -2px 14px rgba(0, 0, 0, 0.45);
@@ -102,6 +106,8 @@
   --c-scrim: rgba(0, 0, 0, 0.58);
   --c-toast-bg: #2b3230;
   --c-toast-fg: #edefee;
+  --c-accent-2: #e6b13e;
+  --c-accent-2-soft: #3a3016;
   --e-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --e-2: 0 4px 14px rgba(0, 0, 0, 0.5);
   --e-up: 0 -2px 14px rgba(0, 0, 0, 0.45);

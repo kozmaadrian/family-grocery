@@ -37,6 +37,27 @@ const emit = defineEmits<{ toggle: [] }>();
       />
     </svg>
 
+    <!-- Shop: cart glyph while still to get -->
+    <svg
+      v-else-if="variant === 'check'"
+      class="check__cart"
+      viewBox="0 0 24 24"
+      width="15"
+      height="15"
+      aria-hidden="true"
+    >
+      <path
+        d="M3 4h2l2.3 10.2a1.6 1.6 0 0 0 1.6 1.3h7.8a1.6 1.6 0 0 0 1.5-1.2L21 7H6"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.9"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <circle cx="9.5" cy="19.5" r="1.4" fill="currentColor" />
+      <circle cx="16.5" cy="19.5" r="1.4" fill="currentColor" />
+    </svg>
+
     <!-- Products: + to add, − to remove -->
     <svg v-else-if="variant === 'add'" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
       <path
@@ -75,8 +96,12 @@ const emit = defineEmits<{ toggle: [] }>();
   transform: translate(0.5px, -0.5px);
 }
 .check.is-pending {
-  border-style: dashed;
-  border-color: var(--c-text-faint);
+  border-color: var(--c-accent-2);
+  color: var(--c-accent-2);
+  background: var(--c-accent-2-soft);
+}
+.check__cart {
+  display: block;
 }
 .check.is-add {
   border-color: var(--c-accent);
