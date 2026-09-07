@@ -74,7 +74,7 @@ watch(list, (l) => {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  padding: var(--s-3) var(--s-4);
+  padding: var(--s-3) 0;
   min-height: 56px;
   background: var(--c-bg);
   border-bottom: 1px solid var(--c-border);

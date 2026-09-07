@@ -86,12 +86,14 @@ function openEdit(id: string) {
       </p>
       <section v-for="g in aisles" :key="g.key" class="group">
         <div class="group__head">{{ g.title }}</div>
-        <DraggableAisle
-          :items="g.items"
-          @reorder="reorderPlacements(storeId, g.key === 'unsorted' ? null : g.key, $event)"
-          @toggle="(id, needed) => setNeeded(id, needed)"
-          @open="openEdit($event)"
-        />
+        <div class="group__items">
+          <DraggableAisle
+            :items="g.items"
+            @reorder="reorderPlacements(storeId, g.key === 'unsorted' ? null : g.key, $event)"
+            @toggle="(id, needed) => setNeeded(id, needed)"
+            @open="openEdit($event)"
+          />
+        </div>
       </section>
     </div>
 
@@ -203,6 +205,9 @@ function openEdit(id: string) {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--c-text-faint);
+}
+.group__items {
+  padding-left: var(--s-3);
 }
 .row {
   display: flex;

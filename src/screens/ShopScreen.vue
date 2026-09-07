@@ -191,7 +191,7 @@ const empty = computed(
           <span class="group__title">{{ g.title }}</span>
           <span class="group__count">{{ g.items.length }}</span>
         </button>
-        <template v-if="!shop.collapsed.has(g.key)">
+        <div v-if="!shop.collapsed.has(g.key)" class="group__items">
           <ShopRow
             v-for="it in g.items"
             :key="it.need.id"
@@ -203,7 +203,7 @@ const empty = computed(
             @remove="removeItem(it.product.id, it.product.name)"
             @open="openItem(it.product.id)"
           />
-        </template>
+        </div>
       </section>
 
       <section v-if="view.notSoldHere.length" class="group">
@@ -214,7 +214,7 @@ const empty = computed(
           <span class="group__title">Not sold here</span>
           <span class="group__count">{{ view.notSoldHere.length }}</span>
         </button>
-        <template v-if="notSoldOpen">
+        <div v-if="notSoldOpen" class="group__items">
           <ShopRow
             v-for="it in view.notSoldHere"
             :key="it.need.id"
@@ -226,7 +226,7 @@ const empty = computed(
             @remove="removeItem(it.product.id, it.product.name)"
             @open="openItem(it.product.id)"
           />
-        </template>
+        </div>
       </section>
     </div>
 
@@ -353,6 +353,9 @@ const empty = computed(
   border: none;
   background: none;
   color: var(--c-text-dim);
+}
+.group__items {
+  padding-left: var(--s-3);
 }
 .group__chev {
   transition: transform var(--dur) var(--ease);
