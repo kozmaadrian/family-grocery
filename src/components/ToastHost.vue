@@ -49,8 +49,8 @@ async function runAction(t: Toast) {
   width: 100%;
   max-width: 480px;
   padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
-  background: var(--c-text);
-  color: var(--c-bg);
+  background: var(--c-toast-bg);
+  color: var(--c-toast-fg);
   border-radius: var(--r-md);
   box-shadow: var(--e-2);
   font-size: var(--t-body-sm);
@@ -62,7 +62,7 @@ async function runAction(t: Toast) {
 .toast__action {
   border: none;
   background: none;
-  color: var(--c-accent);
+  color: #5eead4; /* bright mint — readable on the dark toast in both themes */
   font-weight: 700;
   padding: var(--s-1) var(--s-2);
 }
