@@ -48,6 +48,12 @@ function step(n, title) {
   console.log(`\n── Step ${n}: ${title} ──`);
 }
 
+console.log(
+  "This script asks yes/no questions as it goes. If you're not sure what to\n" +
+    'answer, just press Enter — that accepts whichever option is capitalized\n' +
+    '([Y/n] means Enter = yes, [y/N] means Enter = no).',
+);
+
 // --- Step 0: confirm wrangler is logged in ---------------------------------
 step(0, 'Cloudflare login');
 try {
@@ -88,6 +94,9 @@ const blockRe =
     : /\[\[d1_databases\]\][\s\S]*?database_id\s*=\s*"([^"]*)"/;
 const existing = toml.match(blockRe)?.[1];
 const looksReal = existing && !/PASTE_.*_HERE/.test(existing) && existing.length > 10;
+// Used later to decide how much explaining Step 4 needs — a database that
+// already existed before this run might already have a password set on it.
+let isFreshInstance = !looksReal;
 
 if (looksReal) {
   console.log(`wrangler.toml already has a database_id for this env (${existing}).`);
@@ -95,6 +104,7 @@ if (looksReal) {
     console.log('Keeping the existing database_id.');
   } else {
     await createAndWriteDbId();
+    isFreshInstance = true;
   }
 } else {
   if (await ask(`Create the D1 database "${DB_NAME}" on your Cloudflare account now?`, { defaultNo: false })) {
@@ -139,27 +149,34 @@ if (await ask(`Apply migrations to ${DB_NAME} on Cloudflare now?`, { defaultNo: 
 }
 
 // --- Step 4: AUTH_SECRET ------------------------------------------------------
-step(4, 'AUTH_SECRET (signs every password hash — required)');
-if (await ask('Generate and set a new AUTH_SECRET now?', { defaultNo: false })) {
+step(4, 'AUTH_SECRET');
+console.log('This is a secret Cloudflare needs to protect the password. Required.');
+if (!isFreshInstance) {
   console.log(
-    'Warning: if a password was already set for this instance, changing AUTH_SECRET\n' +
-      'invalidates it (the stored hash was signed with the old secret). Only do this\n' +
-      'on a brand-new instance, or be ready to reset the password after (see README).',
+    "Note: this instance already existed before this run, so it may already\n" +
+      'have a password set. Replacing AUTH_SECRET would make that old password\n' +
+      "stop working (you'd need to set a new one afterward). Skip this if you\n" +
+      "just want to redeploy code and haven't changed anything about the login.",
   );
-  if (await ask('Continue?')) {
-    const secret = randomBytes(32).toString('hex');
-    run('npx', ['wrangler', 'secret', 'put', 'AUTH_SECRET', ...WRANGLER_ENV_FLAGS], { input: secret });
-    console.log('AUTH_SECRET set. (Not stored anywhere by this script.)');
-  }
+}
+if (await ask('Generate and set it now?', { defaultNo: false })) {
+  const secret = randomBytes(32).toString('hex');
+  run('npx', ['wrangler', 'secret', 'put', 'AUTH_SECRET', ...WRANGLER_ENV_FLAGS], { input: secret });
+  console.log('Done. (This script never stores it anywhere, including here.)');
 }
 
 // --- Step 5: SETUP_KEY (optional) --------------------------------------------
-step(5, 'SETUP_KEY (optional — locks /api/setup until you provide this key)');
+step(5, 'SETUP_KEY');
+console.log(
+  "Optional extra safety: without this, whoever opens the app's URL first\n" +
+    'gets to pick the password. With it, only someone who has this key can. Most\n' +
+    "people don't need it — skip it by pressing Enter.",
+);
 let setupKey = null;
-if (await ask('Set a SETUP_KEY so nobody else can claim the family password after deploy?')) {
+if (await ask('Set one?')) {
   setupKey = randomBytes(16).toString('hex');
   run('npx', ['wrangler', 'secret', 'put', 'SETUP_KEY', ...WRANGLER_ENV_FLAGS], { input: setupKey });
-  console.log(`SETUP_KEY set. SAVE THIS — you need it for the /api/setup call below:\n\n  ${setupKey}\n`);
+  console.log(`Done. SAVE THIS KEY — you'll need it in the next steps:\n\n  ${setupKey}\n`);
 }
 
 // --- Step 6: build + deploy ---------------------------------------------------

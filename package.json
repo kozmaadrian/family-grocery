@@ -2,6 +2,7 @@
   "name": "family-grocery",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
@@ -19,7 +20,9 @@
     "db:migrate:demo": "wrangler d1 migrations apply family-grocery-demo --remote --env demo",
     "seed": "node scripts/seed.mjs",
     "setup": "node scripts/setup.mjs",
-    "setup:demo": "node scripts/setup.mjs --env demo"
+    "setup:demo": "node scripts/setup.mjs --env demo",
+    "reset-password": "node scripts/reset-password.mjs",
+    "reset-password:demo": "node scripts/reset-password.mjs --env demo"
   },
   "dependencies": {
     "@formkit/drag-and-drop": "^0.5.1",

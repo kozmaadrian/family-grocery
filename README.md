@@ -1,12 +1,23 @@
 # Family Grocery
 
-A mobile-first, offline-capable shopping list for a household. Keep a master
-catalog of **products**, mark which ones you currently **need**, then shop one
-**store** at a time with a checklist ordered to match your route through its
-aisles. Multiple devices stay in sync automatically.
+An offline-capable shopping list for a household, built for use on your
+phone. Multiple devices stay in sync automatically.
 
 Built with Vue 3 + Vite (PWA) and a Cloudflare Worker + D1 backend. Full
 design notes: [docs/specs.md](docs/specs.md).
+
+## Why
+
+Grocery shopping is faster when you walk each store once, in one direction,
+instead of backtracking through aisles. The idea here is simple: define each
+store's zones in the order you actually walk them, then place every product
+in the zone it's shelved in — including the same product in a different zone
+for a different store, since layouts vary. Pick a store while shopping, and
+your list reorders itself to match that store's walk, zone by zone.
+
+This is a small, non-commercial hobby project built to solve that one problem
+for personal/family use — not a product, just a tool that's shared as-is in
+case it's useful to someone else too.
 
 ## Run it locally
 
@@ -93,6 +104,20 @@ npm run setup:demo
 Pick a throwaway password when asked, since this instance is meant to be
 shared. Redeploy any time with `npm run deploy:demo`.
 
+## Changing the password
+
+There's no "change password" screen in the app — `/api/setup` only ever
+works once. To set a new one on an already-configured instance:
+
+```bash
+npm run reset-password -- <newPassword> <url>
+npm run reset-password:demo -- <newPassword> <url>   # for the demo instance
+```
+
+This clears the old password and claims the new one in one step; it asks
+for confirmation first. Devices already signed in stay signed in — only new
+logins need the new password.
+
 ## Building your shopping catalog
 
 ### Import and export
@@ -148,6 +173,7 @@ as above. Imports are capped at 2,000 items at a time.
 | `npm run deploy` / `deploy:demo` | Build, then `wrangler deploy` |
 | `npm run db:migrate:local` / `:remote` / `:demo` | Apply database migrations |
 | `npm run seed` | Load an example catalog into a running instance |
+| `npm run reset-password` / `reset-password:demo` | Set a new password on an already-configured instance |
 
 ## Project layout
 
@@ -162,7 +188,7 @@ src/
 shared/types.ts         types shared between client and Worker
 worker/                 Cloudflare Worker — /api/{health,setup,auth,sync}
 migrations/             database schema migrations
-scripts/                setup.mjs, seed.mjs, PWA icon generation
+scripts/                setup.mjs, seed.mjs, reset-password.mjs, PWA icon generation
 test/                   Vitest (@cloudflare/vitest-pool-workers)
 wrangler.toml.example   tracked template — copied to your own, git-ignored wrangler.toml
 ```
@@ -186,3 +212,7 @@ wrangler.toml.example   tracked template — copied to your own, git-ignored wra
   (only the `.example` versions are meant to be tracked).
 - Confirm `scripts/seed.mjs`'s default password is still the generic
   placeholder, not a real one you use anywhere.
+
+## License
+
+[MIT](LICENSE) — free to use, modify, and deploy for your own household.
