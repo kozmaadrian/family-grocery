@@ -4,8 +4,14 @@
 // so there's something to look at right away). Safe to re-run — every step
 // asks before doing anything, and skips what's already configured.
 //
-//   node scripts/setup.mjs            # production instance
-//   node scripts/setup.mjs --env demo # the [env.demo] instance (see README)
+//   node scripts/setup.mjs               # production instance
+//   node scripts/setup.mjs --env demo    # any [env.<name>] block in wrangler.toml
+//
+// Any --env value works, as long as wrangler.toml already has a matching
+// [env.<name>] block (with its own [assets] / [[d1_databases]] / [[ratelimits]]
+// — environments don't inherit bindings from the top level). [env.demo] ships
+// in wrangler.toml.example; add your own blocks for anything else, e.g. a
+// personal [env.demo-2] test sandbox, by copying that block and renaming it.
 //
 // wrangler.toml is git-ignored and per-owner (see wrangler.toml.example) —
 // this script creates your own local copy on first run and fills in your
@@ -23,14 +29,14 @@ import { createInterface } from 'node:readline/promises';
 const ENV = process.argv.includes('--env')
   ? process.argv[process.argv.indexOf('--env') + 1]
   : null;
-if (process.argv.includes('--env') && ENV !== 'demo') {
-  console.error('Only --env demo is supported (matches [env.demo] in wrangler.toml).');
+if (ENV && !/^[a-z0-9-]+$/.test(ENV)) {
+  console.error('--env must be lowercase letters, digits and hyphens only.');
   process.exit(1);
 }
 
 const TOML_PATH = new URL('../wrangler.toml', import.meta.url);
-const DB_NAME = ENV === 'demo' ? 'family-grocery-demo' : 'family-grocery';
-const WRANGLER_ENV_FLAGS = ENV === 'demo' ? ['--env', 'demo'] : [];
+const DB_NAME = ENV ? `family-grocery-${ENV}` : 'family-grocery';
+const WRANGLER_ENV_FLAGS = ENV ? ['--env', ENV] : [];
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 async function ask(question, { defaultNo = true } = {}) {
@@ -86,12 +92,21 @@ if (!existsSync('.dev.vars')) {
 step(2, `D1 database (${DB_NAME})`);
 let toml = readFileSync(TOML_PATH, 'utf8');
 
-// Isolate just this env's [[d1_databases]] block so we don't touch the other
+if (ENV && !toml.includes(`[env.${ENV}]`)) {
+  console.error(
+    `wrangler.toml has no [env.${ENV}] block yet. Environments don't inherit\n` +
+      'bindings, so add one first — copy the [env.demo] block (assets, d1_databases,\n' +
+      `ratelimits) and rename every "demo" in it to "${ENV}", with fresh rate-limit\n` +
+      'namespace ids so it never shares a budget with an existing environment.',
+  );
+  process.exit(1);
+}
+
+// Isolate just this env's [[d1_databases]] block so we don't touch another
 // environment's placeholder/id while editing.
-const blockRe =
-  ENV === 'demo'
-    ? /\[\[env\.demo\.d1_databases\]\][\s\S]*?database_id\s*=\s*"([^"]*)"/
-    : /\[\[d1_databases\]\][\s\S]*?database_id\s*=\s*"([^"]*)"/;
+const blockRe = ENV
+  ? new RegExp(`\\[\\[env\\.${ENV}\\.d1_databases\\]\\][\\s\\S]*?database_id\\s*=\\s*"([^"]*)"`)
+  : /\[\[d1_databases\]\][\s\S]*?database_id\s*=\s*"([^"]*)"/;
 const existing = toml.match(blockRe)?.[1];
 const looksReal = existing && !/PASTE_.*_HERE/.test(existing) && existing.length > 10;
 // Used later to decide how much explaining Step 4 needs — a database that
@@ -216,7 +231,17 @@ if (!url) {
 
   if (withExample) {
     const seedArgs = setupKey ? [password, url, setupKey] : [password, url];
-    run('node', ['scripts/seed.mjs', ...seedArgs], { stdio: 'inherit' });
+    try {
+      run('node', ['scripts/seed.mjs', ...seedArgs], { stdio: 'inherit' });
+    } catch {
+      console.error(
+        '\nCould not load the example content. This usually means someone already\n' +
+          `claimed the password with a different value — for example by opening ${url}\n` +
+          "in a browser before answering this prompt. If that's what happened, either\n" +
+          'use that password to sign in, or reset it:\n\n' +
+          `  node scripts/reset-password.mjs${ENV ? ` --env ${ENV}` : ''} <password> ${url}\n`,
+      );
+    }
   } else {
     const body = JSON.stringify({ password, ...(setupKey ? { key: setupKey } : {}) });
     const res = await fetch(`${url}/api/setup`, {

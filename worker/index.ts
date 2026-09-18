@@ -66,16 +66,6 @@ async function readJson<T>(req: Request): Promise<T | null> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// `configured` only ever flips false -> true (once a password is set). Cache the
-// positive result per isolate so /api/health stops hitting D1 on every poll.
-let configuredCache = false;
-async function isConfigured(env: Env): Promise<boolean> {
-  if (configuredCache) return true;
-  const has = Boolean(await getPasswordHash(env));
-  if (has) configuredCache = true;
-  return has;
-}
-
 async function handleSetup(req: Request, env: Env): Promise<Response> {
   const body = await readJson<{ password?: string; key?: string }>(req);
   const password = body?.password?.trim();
@@ -91,7 +81,6 @@ async function handleSetup(req: Request, env: Env): Promise<Response> {
     return json({ error: 'already configured' }, 409);
   }
   await setPassword(env, password);
-  configuredCache = true;
   const token = await issueToken(env);
   await logAuthEvent(env, req, 'setup', true);
   return json({ token } satisfies AuthResponse);
@@ -160,7 +149,7 @@ export default {
       if (isAuthRoute && (await limited(env.AUTH_RL, `auth:${ip}`))) return tooMany();
 
       if (pathname === '/api/health') {
-        return json({ ok: true, ts: Date.now(), configured: await isConfigured(env) });
+        return json({ ok: true, ts: Date.now(), configured: Boolean(await getPasswordHash(env)) });
       }
       if (pathname === '/api/setup' && req.method === 'POST') {
         return await handleSetup(req, env);

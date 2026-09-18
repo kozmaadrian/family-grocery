@@ -336,7 +336,12 @@ cause at most a day of downtime, never a bill.
   - Over budget → `429` + `Retry-After: 60`, returned **before** any D1 access.
 - **Failed unlock** waits ~0.5 s before responding (wall-clock, not CPU).
 - **Body cap**: any request with `Content-Length` > 512 KB → `413`.
-- **`/api/health`** caches `configured: true` per isolate — no D1 read once set.
+- **`/api/health`** reads `configured` straight from D1 on every call — a
+  single indexed lookup, cheap enough not to cache. (An earlier per-isolate
+  cache was removed: it never reset after a password was cleared out of band,
+  e.g. via the D1 dashboard console, leaving the login screen stuck showing
+  "Enter the password" instead of "Choose a password" until that isolate
+  recycled — correctness mattered more here than saving one D1 read.)
 - **`auth_log`** trims to ~500 rows only ~10% of the time (one write per login,
   not two).
 - **`SETUP_KEY`** (optional secret): if set, `/api/setup` also requires it in the

@@ -2,8 +2,10 @@
 // "change password" feature (`/api/setup` only ever works once), so this does
 // the two steps by hand: clear the stored hash, then claim a new one.
 //
-//   node scripts/reset-password.mjs [--env demo] <newPassword> <url> [setupKey]
+//   node scripts/reset-password.mjs [--env <name>] <newPassword> <url> [setupKey]
 //
+// --env can be any environment that has an [env.<name>] block in wrangler.toml
+// (e.g. demo, or a personal test sandbox like demo-2) — not just "demo".
 // <url> is the deployed instance, e.g. https://family-grocery.<subdomain>.workers.dev
 // setupKey is only needed if that instance has a SETUP_KEY secret set.
 
@@ -13,20 +15,20 @@ import { createInterface } from 'node:readline/promises';
 const args = process.argv.slice(2);
 const envIndex = args.indexOf('--env');
 const ENV = envIndex !== -1 ? args[envIndex + 1] : null;
-if (envIndex !== -1 && ENV !== 'demo') {
-  console.error('Only --env demo is supported.');
+if (ENV && !/^[a-z0-9-]+$/.test(ENV)) {
+  console.error('--env must be lowercase letters, digits and hyphens only.');
   process.exit(1);
 }
 const rest = args.filter((_, i) => i !== envIndex && i !== envIndex + 1);
 const [PASSWORD, URL, SETUP_KEY] = rest;
 
 if (!PASSWORD || PASSWORD.length < 8 || !URL) {
-  console.error('Usage: node scripts/reset-password.mjs [--env demo] <newPassword (8+ chars)> <url> [setupKey]');
+  console.error('Usage: node scripts/reset-password.mjs [--env <name>] <newPassword (8+ chars)> <url> [setupKey]');
   process.exit(1);
 }
 
-const DB_NAME = ENV === 'demo' ? 'family-grocery-demo' : 'family-grocery';
-const WRANGLER_ENV_FLAGS = ENV === 'demo' ? ['--env', 'demo'] : [];
+const DB_NAME = ENV ? `family-grocery-${ENV}` : 'family-grocery';
+const WRANGLER_ENV_FLAGS = ENV ? ['--env', ENV] : [];
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 console.log(`This deletes the current password on ${DB_NAME} and sets a new one.`);
