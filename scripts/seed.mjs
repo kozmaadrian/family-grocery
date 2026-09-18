@@ -2,16 +2,19 @@
 // starter shopping list. Idempotent — stable ids, so re-running just upserts.
 //
 //   npm run dev                       # in another terminal (API on :8787)
-//   node scripts/seed.mjs [--fresh] [password] [apiBase]
+//   node scripts/seed.mjs [--fresh] [password] [apiBase] [setupKey]
 //
 // --fresh first tombstones every existing row (clean slate), then seeds.
-// Defaults: password "dev-seed-password", apiBase http://localhost:8787
+// Defaults: password "dev-seed-password" (local/dev only — never reuse a real
+// family password here, this file is committed to git), apiBase http://localhost:8787
+// setupKey is only needed if the instance has a SETUP_KEY secret set (see README).
 
 const args = process.argv.slice(2);
 const FRESH = args.includes('--fresh');
 const rest = args.filter((a) => a !== '--fresh');
 const PASSWORD = rest[0] || 'dev-seed-password';
 const API = (rest[1] || 'http://localhost:8787').replace(/\/$/, '');
+const SETUP_KEY = rest[2];
 
 // Filled in at send time — must be after any --fresh tombstones so LWW keeps the seed.
 let stamp = Date.now();
@@ -109,7 +112,7 @@ async function post(path, body, headers = { 'content-type': 'application/json' }
 
 async function main() {
   // ensure a password exists, then get a token
-  let res = await post('/api/setup', { password: PASSWORD });
+  let res = await post('/api/setup', { password: PASSWORD, ...(SETUP_KEY ? { key: SETUP_KEY } : {}) });
   if (res.status === 409) {
     res = await post('/api/auth', { password: PASSWORD });
   }

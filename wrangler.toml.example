@@ -11,7 +11,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "family-grocery"
-database_id = "2c82d973-8d0a-450c-a44e-c8052f04f50c"
+database_id = "PASTE_DATABASE_ID_HERE"
 migrations_dir = "migrations"
 
 # AUTH_SECRET is supplied by .dev.vars locally and `wrangler secret put AUTH_SECRET` in production.
@@ -34,13 +34,8 @@ simple = { limit = 200, period = 60 }
 # Worker (family-grocery-demo.<subdomain>.workers.dev), its own D1 database, its
 # own AUTH_SECRET. Nothing is shared with the family instance above.
 #
-# First-time setup (see README "Deploy a demo instance"):
-#   npx wrangler d1 create family-grocery-demo   # paste the id below
-#   npm run db:migrate:demo
-#   npx wrangler secret put AUTH_SECRET --env demo
-#   npm run deploy:demo
-#   node scripts/seed.mjs --fresh <demo-password> https://family-grocery-demo.<subdomain>.workers.dev
-#
+# First-time setup (see README "Deploying a shareable demo"):
+#   npm run setup:demo
 # Environments don't inherit bindings, so assets / d1 / ratelimits are repeated.
 [env.demo]
 name = "family-grocery-demo"
