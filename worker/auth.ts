@@ -1,3 +1,4 @@
+import type { AuthEventKind, AuthLogEntry } from '../shared/types';
 import type { Env } from './index';
 
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -46,6 +47,50 @@ export async function issueToken(env: Env): Promise<string> {
     .bind(token, Date.now())
     .run();
   return token;
+}
+
+/** Delete every issued token. Returns how many sessions were revoked. */
+export async function revokeAllTokens(env: Env): Promise<number> {
+  const res = await env.DB.prepare(`DELETE FROM tokens`).run();
+  return res.meta.changes ?? 0;
+}
+
+/** Record one sign-in attempt. Never throws — logging must not break auth. */
+export async function logAuthEvent(
+  env: Env,
+  req: Request,
+  kind: AuthEventKind,
+  ok: boolean,
+): Promise<void> {
+  const ua = (req.headers.get('user-agent') ?? '').slice(0, 400) || null;
+  const ip = req.headers.get('cf-connecting-ip') ?? null;
+  try {
+    await env.DB.prepare(
+      `INSERT INTO auth_log (at, kind, ok, user_agent, ip) VALUES (?, ?, ?, ?, ?)`,
+    )
+      .bind(Date.now(), kind, ok ? 1 : 0, ua, ip)
+      .run();
+    // trim to the most recent ~500 rows, but only occasionally — one extra write
+    // per login is wasteful, and this table is already tiny.
+    if (Math.random() < 0.1) {
+      await env.DB.prepare(
+        `DELETE FROM auth_log WHERE id <= (
+           SELECT id FROM auth_log ORDER BY id DESC LIMIT 1 OFFSET 500
+         )`,
+      ).run();
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function readAuthLog(env: Env, limit = 100): Promise<AuthLogEntry[]> {
+  const res = await env.DB.prepare(
+    `SELECT at, kind, ok, user_agent, ip FROM auth_log ORDER BY id DESC LIMIT ?`,
+  )
+    .bind(Math.min(Math.max(Math.floor(limit) || 0, 1), 500))
+    .all<AuthLogEntry>();
+  return res.results ?? [];
 }
 
 export async function verifyPassword(env: Env, password: string): Promise<boolean> {

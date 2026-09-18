@@ -221,6 +221,15 @@ CREATE TABLE tokens (
   token      TEXT PRIMARY KEY,
   created_at INTEGER NOT NULL
 );
+
+CREATE TABLE auth_log (            -- migration 0002; Worker trims to last 500 rows
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  at         INTEGER NOT NULL,
+  kind       TEXT NOT NULL,        -- 'setup' | 'unlock' | 'logout-all'
+  ok         INTEGER NOT NULL,     -- 1 | 0
+  user_agent TEXT,
+  ip         TEXT
+);
 ```
 
 `Unsorted` is not a row — it's the client-side rendering bucket for
@@ -303,8 +312,41 @@ Unchanged in spirit from the draft, moved to D1:
   token into `tokens`, returns it. 403 on mismatch.
 - Client stores the token in `localStorage` (`grocery:token`) and sends
   `Authorization: Bearer <token>`. Tokens last 30 days (checked on use).
+- **Log out everyone:** `POST /api/logout-all` (bearer) — deletes every row in
+  `tokens`, so all devices (including the caller) must re-enter the password.
+  Exposed in Settings → Sessions.
+- **Sign-in log:** every `setup` / `unlock` / `logout-all` attempt (success and
+  failure) is appended to `auth_log` with timestamp, raw User-Agent and
+  `CF-Connecting-IP`. The Worker keeps the most recent 500 rows.
+  `GET /api/auth-log` (bearer) returns the latest 100; shown in Settings →
+  Sessions → *Sign-in log* (UA parsed to "Chrome · Mac" client-side; loopback
+  IPs hidden).
 - `/api/setup` and `/api/auth` are the only unauthenticated routes.
 - `AUTH_SECRET` is a Worker secret (`.dev.vars` locally).
+
+### Abuse / cost protection
+
+The app runs on Cloudflare's free tiers; the goal is that a hostile visitor can
+cause at most a day of downtime, never a bill.
+
+- **Rate limiting** (Workers native rate-limit binding, keyed by `CF-Connecting-IP`,
+  enforced per data centre):
+  - `API_RL` — 200 req/min per IP across every `/api/*` route.
+  - `AUTH_RL` — 10 req/min per IP on `/api/auth` + `/api/setup` on top of that.
+  - Over budget → `429` + `Retry-After: 60`, returned **before** any D1 access.
+- **Failed unlock** waits ~0.5 s before responding (wall-clock, not CPU).
+- **Body cap**: any request with `Content-Length` > 512 KB → `413`.
+- **`/api/health`** caches `configured: true` per isolate — no D1 read once set.
+- **`auth_log`** trims to ~500 rows only ~10% of the time (one write per login,
+  not two).
+- **`SETUP_KEY`** (optional secret): if set, `/api/setup` also requires it in the
+  body, closing the "first caller after deploy claims the password" window.
+- **Password**: min 8 chars; stored as `HMAC-SHA256` (not a slow KDF — acceptable
+  only because `AUTH_SECRET` is long/random *and* guessing is now rate-limited).
+- Residual: the rate limiter is per-colo, so a large botnet can still burn
+  Worker *requests* (not D1). The backstop is the **Workers Free plan's hard
+  100k-req/day cap** (then 429, no charge) — or a **spending limit** if on the
+  paid plan. This is an account setting, not code. See README.
 
 ---
 
@@ -314,10 +356,14 @@ Unchanged in spirit from the draft, moved to D1:
 |---|---|---|
 | `POST /api/setup` | none | One-time password creation. |
 | `POST /api/auth` | none | Password → token. |
+| `POST /api/logout-all` | bearer | Revoke every session (truncate `tokens`). |
+| `GET /api/auth-log` | bearer | Latest 100 sign-in-log entries. |
 | `POST /api/sync` | bearer | Delta push + pull (section 6). |
 | `GET /api/health` | none | Liveness for the service worker. |
 
-That's the whole server surface. All domain logic is client-side.
+Every route can also return `429` (rate limited, with `Retry-After`) or `413`
+(body over 512 KB). That's the whole server surface. All domain logic is
+client-side.
 
 ---
 
@@ -350,8 +396,9 @@ the server reports no password set, switches to "Set a family password".
 
 ### 10.2 Shop (home / default tab)
 
-- **Store switcher** — a pill at the top showing the current store and coverage
-  ("Lidl · 8 of 11"). Tap → sheet to pick a store or "Any store".
+- **Store switcher** — a pill at the top-right showing coverage ("8/11"). Tap →
+  a dropdown opens directly under it (Reka Popover) to pick a store or "Any
+  store". Products has the same pill (showing the store name / "All").
 - **Progress bar** — "6 / 14 in cart", pinned under the header.
 - **Body** — areas as collapsible section headers in walking order; rows are the
   needed products in each area sorted by placement position. Then the built-in
@@ -430,18 +477,40 @@ the server reports no password set, switches to "Set a family password".
 
 ## 12. Visual design system
 
-- **Color** — neutral ground (`#f7f7f8` light / `#0f1211` dark), raised card
-  surface, one accent (deep teal, e.g. `#0f766e` light / `#2dd4bf` dark),
-  semantic success (check) and danger (delete). Areas get a subtle colored
-  left-border for scannability.
+- **Color** — neutral ground (`#f4f5f6` light / `#0f1211` dark), raised card
+  surface, one accent (deep teal, `#0c6b62` light / `#2dd4bf` dark), semantic
+  success (check) and danger (`#c31d1d` light / `#f87171` dark). Every
+  text/icon colour clears WCAG AA (≥ 4.5:1) on its background in both themes.
 - **Radius** — 12 (cards/rows), 20 (sheets), full (pills, FAB, checkbox).
 - **Spacing** — 4 / 8 / 12 / 16 / 24 / 32 scale.
-- **Type** — system stack. 13 caption · 15 body-sm · 17 body · 20 title · 28
-  screen-title. Weights 400 / 600 / 700.
+- **Type** — system stack. 12 tab-label · 14 caption · 16 body-sm · 17 body ·
+  20 title · 28 screen-title. Weights 400 / 500 / 600 / 700. Reading text is
+  never below 16 px; inputs inherit 17 px so iOS Safari never zooms on focus.
+- **Icons** — one inline SVG set, `currentColor`, sized 18 / 20 / 24 px.
+  Circular icon buttons (FAB, Shop's eye toggle, the check circle) let the SVG
+  fill the button and centre the glyph via the `viewBox` — no box-in-box
+  centring, which drifts a sub-pixel on fractional-DPR / Display-Zoom screens.
+- **Control height** — two values. `--control-h` (44 px) is every interactive
+  element: form fields, every button, dialog inputs and actions, the FAB.
+  `--control-h-sm` (36 px) is the compact toolbar strip only — header chips,
+  search field, the Shop status bar's progress / eye / Finish. `--row-h`
+  (67 px) is a list row. Small glyph buttons keep their visual size and reach
+  a 44 px target via the `.hit` utility.
+- **Header** — fixed `--header-h` (60 px) on every screen; no scroll-collapse,
+  nothing moves. A `--c-hairline` bottom border separates it from content.
+  The Shop status bar and Products search bar are both 52 px so those two
+  screens share a layout; Stores/Settings have no sub-toolbar.
+- **Width** — the app is capped at `--app-max-w` (480 px) and centred; on wider
+  screens `--c-frame` fills the sides and `#app` gets a hairline border, so a
+  desktop viewer sees the same phone-shaped layout. Fixed elements (tab bar,
+  toasts, FAB, sheets) offset by `--app-edge` to stay inside the column.
 - **Elevation** — soft, low shadows; sheets and the tab bar cast upward.
-- **Icons** — one inline SVG set, `currentColor`, 24 pt.
-- **Themes** — follow system by default with a manual override; both fully
-  specified (no color defined only inside a media query).
+- **Shared classes** (`tokens.css`) — `.input` (form fields), `.btn-primary`,
+  `.btn-danger`, `.pill` / header chips, `.u-eyebrow` (section labels), `.hit`.
+- **Themes** — one source of truth per colour via `light-dark(<light>,<dark>)`,
+  resolved against `color-scheme`; `data-theme` (or, absent it, the OS setting)
+  drives that. Follows system by default with a manual override. Pinch-zoom is
+  left enabled.
 
 ---
 
@@ -474,8 +543,11 @@ the server reports no password set, switches to "Set a family password".
   "buy again" affordance. A bought-log is future.
 - **Position renormalization**: on list load, if any adjacent gap < 1e-4, rewrite
   that area's positions to `1, 2, 3, …` (dirty rows sync normally).
-- **Token leak**: a stolen token works for 30 days; acceptable for a family app,
-  documented. "Sign out everywhere" (truncate `tokens`) is future.
+- **Token leak**: a stolen token works for 30 days; acceptable for a family app.
+  Mitigation if a device is lost: Settings → **Log out all devices**
+  (`POST /api/logout-all`) revokes every session at once. Settings →
+  **Sign-in log** surfaces failed/succeeded unlock attempts so a guessing
+  attempt is at least visible.
 
 ---
 
@@ -498,7 +570,7 @@ drawn up at the start of each phase.
 | **0 — Setup** | Vite + Vue 3 + TS scaffold; Pinia + vue-router; `wrangler.toml` with `[assets]` + D1; local dev loop; Prettier/EditorConfig. | ✅ |
 | **1 — Backend** | D1 schema + migrations; `/api/setup`, `/api/auth`, `/api/health`; `/api/sync` (push + pull, LWW on client clock, tombstones); 10 Vitest tests on the real Worker + D1. | ✅ |
 | **2 — Client data layer** | IndexedDB mirror via `idb`; repo (typed CRUD, dirty queue); sync engine (push queued / pull since cursor / merge, settle against server ts); triggers launch/focus/online/debounce; pending count. | ✅ |
-| **3 — App shell** | vue-router + bottom tab bar; safe-area layout; theme tokens + light/dark + override; header scroll-collapse; toast system with Undo; Reka UI bottom sheet; Login screen + token flow. | ✅ |
+| **3 — App shell** | vue-router + bottom tab bar; safe-area layout; theme tokens + light/dark + override; fixed header; toast system with Undo; Reka UI bottom sheet; Login screen + token flow. | ✅ |
 | **4 — Products & Stores** | Products list + search + Product sheet (name/qty/note autosave, buy-at toggles, per-store aisle); Stores list; Store screen with aisle CRUD + long-press **drag-to-reorder**. | ✅ |
 | **5 — Shop screen** | Store switcher + coverage; aisle-grouped ordered checklist; collapsible groups; progress; check-off → In cart; Finish shopping + undo; swipe-to-remove; Item sheet; Not-sold-here. Adding items is done on the Products tab. | ✅ |
 | **6 — Reordering** | Per-aisle long-press drag-to-reorder, persisted to `placement.position`. Lives on the **Products tab** (store selected), not the Shop tab — the Shop screen stays a read-only checklist. Cross-aisle moves via the item/product sheet's aisle picker. | ✅ |

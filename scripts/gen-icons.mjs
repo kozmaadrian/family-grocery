@@ -26,7 +26,7 @@ for (const t of targets) {
       width: t.size,
       height: t.size,
       channels: 4,
-      background: t.pad ? { r: 15, g: 118, b: 110, alpha: 1 } : { r: 0, g: 0, b: 0, alpha: 0 },
+      background: t.pad ? { r: 12, g: 107, b: 98, alpha: 1 } : { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
     .composite([{ input: scaled, top: t.pad, left: t.pad }])

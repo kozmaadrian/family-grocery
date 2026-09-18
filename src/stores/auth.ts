@@ -49,6 +49,12 @@ export const useAuthStore = defineStore('auth', {
       initSync();
     },
 
+    /** Revoke every session on the server, then sign this device out too. */
+    async logoutEveryone() {
+      await api.logoutAll();
+      await this.signOut(false);
+    },
+
     async signOut(wipeLocal = false) {
       setToken(null);
       this.token = null;

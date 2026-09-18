@@ -48,7 +48,7 @@ async function copy() {
     <p class="hint">{{ counts }} — copy this and keep it as a backup, or edit it and re-import.</p>
 
     <textarea
-      class="export-ta"
+      class="input export-ta"
       :value="json"
       readonly
       rows="12"
@@ -56,7 +56,7 @@ async function copy() {
       @focus="($event.target as HTMLTextAreaElement).select()"
     />
 
-    <button class="go" @click="copy">{{ copied ? 'Copied ✓' : 'Copy JSON' }}</button>
+    <button class="btn-primary" @click="copy">{{ copied ? 'Copied ✓' : 'Copy JSON' }}</button>
   </BottomSheet>
 </template>
 
@@ -67,29 +67,10 @@ async function copy() {
   font-size: var(--t-body-sm);
 }
 .export-ta {
-  width: 100%;
   margin-bottom: var(--s-3);
-  padding: var(--s-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
   background: var(--c-surface-2);
-  color: var(--c-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: var(--t-caption);
-  line-height: 1.5;
+  font-size: var(--t-body-sm); /* 16px — also keeps iOS Safari from zooming on focus */
   resize: vertical;
-}
-.export-ta:focus {
-  outline: none;
-  border-color: var(--c-accent);
-}
-.go {
-  width: 100%;
-  padding: var(--s-4);
-  border: none;
-  border-radius: var(--r-md);
-  background: var(--c-accent);
-  color: var(--c-accent-contrast);
-  font-weight: 700;
 }
 </style>

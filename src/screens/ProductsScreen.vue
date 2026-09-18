@@ -3,16 +3,15 @@ import { computed, ref } from 'vue';
 import ScreenHeader from '@/components/ScreenHeader.vue';
 import FabButton from '@/components/FabButton.vue';
 import CheckCircle from '@/components/CheckCircle.vue';
-import QtyChip from '@/components/QtyChip.vue';
-import NoteLabel from '@/components/NoteLabel.vue';
 import ProductSheet from '@/components/ProductSheet.vue';
-import StorePickerSheet from '@/components/StorePickerSheet.vue';
+import StorePicker from '@/components/StorePicker.vue';
 import DraggableAisle from '@/components/DraggableAisle.vue';
 import { useDataStore } from '@/stores/data';
 import { useShopStore } from '@/stores/shop';
 import { useArrangeView } from '@/lib/arrange';
 import { needId } from '@/lib/ids';
-import { reorderPlacements, setNeeded, storesForProduct } from '@/lib/domain';
+import { placementsForStore, reorderPlacements, setNeeded } from '@/lib/domain';
+import { fold } from '@/lib/text';
 
 const data = useDataStore();
 const shop = useShopStore();
@@ -20,7 +19,6 @@ const shop = useShopStore();
 const query = ref('');
 const sheetOpen = ref(false);
 const editingId = ref<string | null>(null);
-const pickerOpen = ref(false);
 
 const storeId = computed(() =>
   shop.storeId && data.get('stores', shop.storeId) ? shop.storeId : '',
@@ -33,14 +31,17 @@ const arranging = computed(() => storeId.value !== '' && !query.value.trim());
 const aisles = useArrangeView(storeId);
 
 const products = computed(() => {
-  const q = query.value.trim().toLowerCase();
-  return data
-    .active('products')
-    .filter((p) => !q || p.name.toLowerCase().includes(q))
+  const q = fold(query.value.trim()); // accent-insensitive: "cekla" finds "Cékla"
+  let list = data.active('products');
+  // a store is selected → only that store's products (matches the aisle view's scope)
+  if (storeId.value) {
+    const atStore = new Set(placementsForStore(storeId.value).map((p) => p.product_id));
+    list = list.filter((p) => atStore.has(p.id));
+  }
+  return list
+    .filter((p) => !q || fold(p.name).includes(q) || (!!p.note && fold(p.note).includes(q)))
     .sort((a, b) => a.name.localeCompare(b.name));
 });
-
-const storeName = (id: string) => data.get('stores', id)?.name ?? '';
 
 function isNeeded(productId: string): boolean {
   const n = data.get('needs', needId(productId));
@@ -61,31 +62,22 @@ function openEdit(id: string) {
   <div class="screen">
     <ScreenHeader title="Products">
       <template #actions>
-        <button class="switch" @click="pickerOpen = true">
-          <span>{{ pillLabel }}</span>
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-            <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
+        <StorePicker :selected="storeId" :label="pillLabel" @pick="shop.selectStore($event)" />
       </template>
     </ScreenHeader>
 
     <div class="search">
-      <input v-model="query" class="search__input" type="search" placeholder="Search products" />
+      <input v-model="query" class="input" type="search" placeholder="Search products" />
     </div>
 
     <!-- store selected: arrange that store's products by aisle -->
     <div v-if="arranging" class="list">
-      <p class="hint">
-        Tick what you need, and drag items into the order you pass them at
-        {{ storeLabel }}.
-      </p>
       <p v-if="aisles.length === 0" class="empty">
         No products assigned to {{ storeLabel }} yet.<br />
         Open a product and turn on “Buy at {{ storeLabel }}”.
       </p>
       <section v-for="g in aisles" :key="g.key" class="group">
-        <div class="group__head">{{ g.title }}</div>
+        <div class="group__head u-eyebrow">{{ g.title }}</div>
         <div class="group__items">
           <DraggableAisle
             :items="g.items"
@@ -100,40 +92,34 @@ function openEdit(id: string) {
     <!-- default: flat catalog -->
     <div v-else class="list">
       <p v-if="products.length === 0" class="empty">
-        {{ query ? 'No matches.' : 'No products yet. Tap + to add one.' }}
+        <template v-if="query">
+          No matches{{ storeId ? ` at ${storeLabel}` : '' }}.
+        </template>
+        <template v-else>No products yet. Tap + to add one.</template>
       </p>
 
-      <div v-for="p in products" :key="p.id" class="row">
-        <CheckCircle
-          variant="add"
-          :checked="isNeeded(p.id)"
-          :label="isNeeded(p.id) ? `Remove ${p.name} from the list` : `Add ${p.name} to the list`"
-          @toggle="setNeeded(p.id, !isNeeded(p.id))"
-        />
-        <button class="row__body" @click="openEdit(p.id)">
-          <span class="row__main">
-            <span class="row__name" :class="{ 'is-on': isNeeded(p.id) }">{{ p.name }}</span>
-            <span v-if="storesForProduct(p.id).length" class="row__meta">
-              <span v-for="sid in storesForProduct(p.id)" :key="sid" class="chip">
-                {{ storeName(sid) }}
-              </span>
+      <div class="group__items">
+        <div v-for="p in products" :key="p.id" class="row">
+          <CheckCircle
+            class="row__check"
+            variant="add"
+            :checked="isNeeded(p.id)"
+            :label="isNeeded(p.id) ? `Remove ${p.name} from the list` : `Add ${p.name} to the list`"
+            @toggle="setNeeded(p.id, !isNeeded(p.id))"
+          />
+          <button class="row__body" @click="openEdit(p.id)">
+            <span class="row__head">
+              <span class="row__name">{{ p.name }}</span>
+              <span v-if="p.default_qty" class="row__qty">×&nbsp;{{ p.default_qty }}</span>
             </span>
-          </span>
-          <span v-if="p.default_qty || p.note" class="row__aside">
-            <QtyChip v-if="p.default_qty" :qty="p.default_qty" />
-            <NoteLabel v-if="p.note" :text="p.note" />
-          </span>
-        </button>
+            <span v-if="p.note" class="row__note">{{ p.note }}</span>
+          </button>
+        </div>
       </div>
     </div>
 
     <FabButton label="New product" @click="openNew" />
 
-    <StorePickerSheet
-      v-model:open="pickerOpen"
-      :selected="storeId"
-      @pick="shop.selectStore($event)"
-    />
     <ProductSheet
       v-model:open="sheetOpen"
       :product-id="editingId"
@@ -148,50 +134,19 @@ function openEdit(id: string) {
   flex-direction: column;
   min-height: 100%;
 }
-.switch {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 55vw;
-  padding: 6px 8px 6px 12px;
-  border: none;
-  border-radius: var(--r-full);
-  background: var(--c-accent-soft);
-  color: var(--c-accent);
-  font-weight: 700;
-  font-size: var(--t-body-sm);
-}
-.switch span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .search {
-  padding: 0 var(--s-4) var(--s-3);
+  padding: var(--s-2) var(--s-4);
   position: sticky;
   top: calc(var(--header-h) + var(--safe-t));
   background: var(--c-bg);
   z-index: 5;
 }
-.search__input {
-  width: 100%;
-  padding: var(--s-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-  background: var(--c-surface);
-}
-.search__input:focus {
-  outline: none;
-  border-color: var(--c-accent);
+.search .input {
+  min-height: var(--control-h-sm);
 }
 .list {
   padding: 0 var(--s-4);
   padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 88px);
-}
-.hint {
-  color: var(--c-text-dim);
-  font-size: var(--t-body-sm);
-  margin: var(--s-2) 0 var(--s-3);
 }
 .empty {
   color: var(--c-text-dim);
@@ -200,11 +155,6 @@ function openEdit(id: string) {
 }
 .group__head {
   padding: var(--s-3) 0 var(--s-1);
-  font-size: var(--t-caption);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--c-text-faint);
 }
 .group__items {
   padding-left: var(--s-3);
@@ -212,60 +162,50 @@ function openEdit(id: string) {
 .row {
   display: flex;
   align-items: center;
-  gap: var(--s-3);
+  gap: var(--s-4);
   padding: var(--s-3) 0;
-  min-height: 56px;
-  border-bottom: 1px solid var(--c-border);
+  min-height: var(--row-h);
 }
 .row__body {
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: var(--s-3);
+  flex-direction: column;
+  gap: 2px;
   padding: 0;
   border: none;
   background: none;
   text-align: left;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
+.row__head {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: baseline;
+  gap: var(--s-3);
 }
 .row__name {
+  flex: 1;
   min-width: 0;
   font-size: var(--t-body);
+  font-weight: 600;
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.row__name.is-on {
-  color: var(--c-accent);
-  font-weight: 600;
-}
-.row__meta {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: var(--t-caption);
-  color: var(--c-text-dim);
-}
-.row__aside {
+.row__qty {
   flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  max-width: 46%;
+  font-size: var(--t-body-sm);
+  font-weight: 600;
+  color: var(--c-text);
+  white-space: nowrap;
 }
-.chip {
+.row__note {
+  min-width: 0;
+  font-size: var(--t-body-sm);
+  line-height: 1.35;
   color: var(--c-text-dim);
-  background: var(--c-surface-2);
-  padding: 1px 8px;
-  border-radius: var(--r-full);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

@@ -15,18 +15,8 @@ const stores = computed(() =>
   data.active('stores').sort((a, b) => a.name.localeCompare(b.name)),
 );
 
-const neededProductIds = computed(
-  () => new Set(data.active('needs').map((n) => n.product_id)),
-);
-
 function areaCount(storeId: string): number {
   return data.active('areas').filter((a) => a.store_id === storeId).length;
-}
-function neededHere(storeId: string): number {
-  return data
-    .active('placements')
-    .filter((p) => p.store_id === storeId && neededProductIds.value.has(p.product_id))
-    .length;
 }
 
 async function add(name: string) {
@@ -45,13 +35,15 @@ async function add(name: string) {
       </p>
 
       <RouterLink v-for="s in stores" :key="s.id" :to="`/stores/${s.id}`" class="row">
-        <span class="row__name">{{ s.name }}</span>
-        <span class="row__meta">
-          {{ areaCount(s.id) }} {{ areaCount(s.id) === 1 ? 'area' : 'areas' }}
-          <span v-if="neededHere(s.id)" class="badge">{{ neededHere(s.id) }} to buy</span>
+        <span class="row__body">
+          <span class="row__name">{{ s.name }}</span>
+          <span class="row__sub">
+            {{ areaCount(s.id) }} {{ areaCount(s.id) === 1 ? 'aisle' : 'aisles' }}
+          </span>
         </span>
-        <svg class="row__chev" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <svg class="row__edit" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
         </svg>
       </RouterLink>
     </div>
@@ -76,7 +68,7 @@ async function add(name: string) {
   min-height: 100%;
 }
 .list {
-  padding: var(--s-2) var(--s-4);
+  padding: 0 var(--s-4);
   padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 88px);
 }
 .empty {
@@ -88,31 +80,34 @@ async function add(name: string) {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  padding: var(--s-4) 0;
-  border-bottom: 1px solid var(--c-border);
+  padding: var(--s-3) 0;
+  min-height: var(--row-h);
   text-decoration: none;
   color: var(--c-text);
 }
+.row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .row__name {
+  min-width: 0;
   font-size: var(--t-body);
   font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.row__meta {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  font-size: var(--t-caption);
+.row__sub {
+  font-size: var(--t-body-sm);
+  line-height: 1.35;
   color: var(--c-text-dim);
 }
-.badge {
-  background: var(--c-accent-soft);
-  color: var(--c-accent);
-  padding: 1px 8px;
-  border-radius: var(--r-full);
-  font-weight: 600;
-}
-.row__chev {
+.row__edit {
+  flex: none;
   color: var(--c-text-faint);
 }
 </style>

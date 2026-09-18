@@ -25,6 +25,10 @@ export default defineWorkersConfig(async () => {
               AUTH_SECRET: 'test-secret',
               TEST_MIGRATIONS: migrations,
             },
+            ratelimits: {
+              AUTH_RL: { simple: { limit: 10, period: 60 } },
+              API_RL: { simple: { limit: 200, period: 60 } },
+            },
           },
         },
       },

@@ -70,3 +70,57 @@ Then open the deployed URL and set the family password when prompted (or
 
 Each family member opens the URL once, enters the password, and can "Add to Home
 Screen" from Settings. Devices sync automatically; everything works offline.
+
+## Deploy a demo instance
+
+A second, fully independent copy to share with friends — its own Worker, its own
+D1 database, its own `AUTH_SECRET`. Nothing is shared with the family instance.
+The `[env.demo]` block in [wrangler.toml](wrangler.toml) already holds the config;
+you just create the database and fill in its id.
+
+```bash
+npx wrangler d1 create family-grocery-demo
+#   → paste the printed database_id into wrangler.toml ([env.demo] d1_databases.database_id)
+npm run db:migrate:demo
+npx wrangler secret put AUTH_SECRET --env demo    # a different long random string
+npm run deploy:demo                               # → family-grocery-demo.<subdomain>.workers.dev
+
+# set the demo password AND load demo data in one shot:
+node scripts/seed.mjs --fresh "demo-pick-something-shareable" \
+  https://family-grocery-demo.<subdomain>.workers.dev
+```
+
+Redeploy the demo any time with `npm run deploy:demo` (same `dist/`, so the app
+code is always whatever you last built). To reset the demo data, re-run the seed
+command with `--fresh`.
+
+Notes:
+
+- Don't set `SETUP_KEY` on the demo unless you'll do the `/api/setup` call
+  yourself — the seed script can't pass it. Without it, run the seed step
+  immediately after deploy so you claim the password first.
+- The demo Worker counts against the same account free-tier limits (100k
+  req/day, 5M D1 reads/day) as the family instance; separate rate-limit
+  namespaces (`2001` / `2002`) keep demo traffic from throttling the family app.
+
+## Security & keeping costs at zero
+
+The Worker rate-limits itself (per client IP, per Cloudflare data centre):
+`/api/auth` + `/api/setup` to 10/min, every other `/api/*` route to 200/min —
+over budget returns `429` before touching the database. Failed unlocks also pause
+~0.5 s, request bodies over 512 KB are rejected, and `auth_log` records every
+unlock attempt (Settings → Sessions → *Sign-in log*).
+
+Two things are **account settings you must do in the Cloudflare dashboard** — the
+code can't:
+
+1. **Stay on the Workers Free plan**, or if you're on Workers Paid, set a
+   **spending limit** (Workers & Pages → your Worker → Settings → Usage, or the
+   account Billing page). On the free plan an attack causes at most ~a day of
+   `429`s once you pass 100k requests — never a charge.
+2. Optionally set a **`SETUP_KEY`** secret (`npx wrangler secret put SETUP_KEY`)
+   *before* the first deploy. Then `/api/setup` also needs that key in the body,
+   so nobody can grab the password in the seconds between deploy and your own
+   setup call: `curl … -d '{"password":"…","key":"<SETUP_KEY>"}'`.
+
+Rate-limit tuning lives in [wrangler.toml](wrangler.toml) (`[[ratelimits]]`).

@@ -14,11 +14,11 @@ async function runAction(t: Toast) {
     <TransitionGroup name="toast">
       <div v-for="t in toasts.items" :key="t.id" class="toast">
         <span class="toast__msg">{{ t.message }}</span>
-        <button v-if="t.action" class="toast__action" @click="runAction(t)">
+        <button v-if="t.action" class="toast__action hit" @click="runAction(t)">
           {{ t.action.label }}
         </button>
-        <button class="toast__x" aria-label="Dismiss" @click="dismissToast(t.id)">
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <button class="toast__x hit" aria-label="Dismiss" @click="dismissToast(t.id)">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
         </button>
@@ -30,8 +30,8 @@ async function runAction(t: Toast) {
 <style scoped>
 .toasts {
   position: fixed;
-  left: 0;
-  right: 0;
+  left: var(--app-edge);
+  right: var(--app-edge);
   bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--s-3));
   z-index: 35; /* below bottom sheets (40/41) so a dialog covers pending toasts */
   display: flex;

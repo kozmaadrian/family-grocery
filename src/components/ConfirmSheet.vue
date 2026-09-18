@@ -40,7 +40,10 @@ function confirm() {
 }
 .btn {
   flex: 1;
-  padding: var(--s-4);
+  display: grid;
+  place-items: center;
+  min-height: var(--control-h);
+  padding: 0 var(--s-4);
   border: none;
   border-radius: var(--r-md);
   font-weight: 700;

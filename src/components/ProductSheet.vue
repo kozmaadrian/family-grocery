@@ -31,8 +31,8 @@ const product = computed(() =>
 
 const form = reactive({ name: '', qty: '', note: '' });
 const hydrating = ref(false);
-/** local store selection while creating a new product */
-const newStores = reactive(new Set<string>());
+/** local store → aisle selection while creating a new product (null = Unsorted) */
+const newPlacements = reactive(new Map<string, string | null>());
 
 watch(
   () => [props.open, props.productId] as const,
@@ -43,8 +43,8 @@ watch(
     form.name = p?.name ?? '';
     form.qty = p?.default_qty ?? '';
     form.note = p?.note ?? '';
-    newStores.clear();
-    if (isNew.value && props.defaultStoreId) newStores.add(props.defaultStoreId);
+    newPlacements.clear();
+    if (isNew.value && props.defaultStoreId) newPlacements.set(props.defaultStoreId, null);
     await nextTick();
     hydrating.value = false;
   },
@@ -89,8 +89,12 @@ async function pickArea(storeId: string, areaId: string) {
 }
 
 function toggleNewStore(storeId: string) {
-  if (newStores.has(storeId)) newStores.delete(storeId);
-  else newStores.add(storeId);
+  if (newPlacements.has(storeId)) newPlacements.delete(storeId);
+  else newPlacements.set(storeId, null);
+}
+
+function pickNewArea(storeId: string, areaId: string) {
+  newPlacements.set(storeId, areaId || null);
 }
 
 const busy = ref(false);
@@ -103,7 +107,7 @@ async function add() {
       default_qty: form.qty,
       note: form.note,
     });
-    for (const storeId of newStores) await setPlacement(id, storeId, null);
+    for (const [storeId, areaId] of newPlacements) await setPlacement(id, storeId, areaId);
     emit('created', id);
     emit('update:open', false);
   } finally {
@@ -133,7 +137,7 @@ async function remove() {
         <label class="field__label">Name</label>
         <input
           v-model="form.name"
-          class="field__input"
+          class="input"
           placeholder="e.g. Oat milk"
           enterkeyhint="done"
           @keydown.enter="isNew && add()"
@@ -141,32 +145,49 @@ async function remove() {
       </div>
       <div class="field__qty">
         <label class="field__label">Qty</label>
-        <input v-model="form.qty" class="field__input" placeholder="1" inputmode="text" />
+        <input v-model="form.qty" class="input" placeholder="1" inputmode="text" />
       </div>
     </div>
 
     <div class="field">
       <label class="field__label">Note</label>
-      <input v-model="form.note" class="field__input" placeholder="the big one, on offer, …" />
+      <input v-model="form.note" class="input" placeholder="the big one, on offer, …" />
     </div>
 
     <template v-if="isNew">
       <section v-if="stores.length" class="buy">
-        <h3 class="buy__label">Buy at</h3>
-        <label v-for="s in stores" :key="s.id" class="buy__row">
-          <input type="checkbox" :checked="newStores.has(s.id)" @change="toggleNewStore(s.id)" />
-          <span class="buy__name">{{ s.name }}</span>
-        </label>
+        <h3 class="buy__label u-eyebrow">Buy at</h3>
+        <div v-for="s in stores" :key="s.id" class="buy__store">
+          <label class="buy__row">
+            <input
+              type="checkbox"
+              :checked="newPlacements.has(s.id)"
+              @change="toggleNewStore(s.id)"
+            />
+            <span class="buy__name">{{ s.name }}</span>
+          </label>
+          <select
+            v-if="newPlacements.has(s.id)"
+            class="buy__area input"
+            :value="newPlacements.get(s.id) ?? ''"
+            @change="pickNewArea(s.id, ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">Unsorted</option>
+            <option v-for="a in areasForStore(s.id)" :key="a.id" :value="a.id">
+              {{ a.name }}
+            </option>
+          </select>
+        </div>
       </section>
 
-      <button class="primary" :disabled="busy || form.name.trim().length === 0" @click="add">
+      <button class="btn-primary" :disabled="busy || form.name.trim().length === 0" @click="add">
         Add product
       </button>
     </template>
 
     <template v-else>
       <section class="buy">
-        <h3 class="buy__label">Buy at</h3>
+        <h3 class="buy__label u-eyebrow">Buy at</h3>
         <p v-if="stores.length === 0" class="buy__empty">
           No stores yet — add one from the Stores tab.
         </p>
@@ -177,7 +198,7 @@ async function remove() {
           </label>
           <select
             v-if="isPlaced(s.id)"
-            class="buy__area"
+            class="buy__area input"
             :value="placedArea(s.id) ?? ''"
             @change="pickArea(s.id, ($event.target as HTMLSelectElement).value)"
           >
@@ -189,7 +210,7 @@ async function remove() {
         </div>
       </section>
 
-      <button class="danger" @click="remove">Delete product</button>
+      <button class="btn-danger" @click="remove">Delete product</button>
     </template>
   </BottomSheet>
 </template>
@@ -217,39 +238,11 @@ async function remove() {
   font-weight: 600;
   color: var(--c-text-dim);
 }
-.field__input {
-  width: 100%;
-  padding: var(--s-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-  background: var(--c-surface);
-}
-.field__input:focus {
-  outline: none;
-  border-color: var(--c-accent);
-}
-.primary {
-  width: 100%;
-  padding: var(--s-4);
-  border: none;
-  border-radius: var(--r-md);
-  background: var(--c-accent);
-  color: var(--c-accent-contrast);
-  font-weight: 700;
-}
-.primary:disabled {
-  opacity: 0.45;
-}
 .buy {
   margin: var(--s-2) 0 var(--s-4);
 }
 .buy__label {
   margin: 0 0 var(--s-2);
-  font-size: var(--t-caption);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--c-text-faint);
 }
 .buy__empty {
   color: var(--c-text-dim);
@@ -267,28 +260,17 @@ async function remove() {
   align-items: center;
   gap: var(--s-3);
   flex: 1;
-  min-height: 40px;
+  min-height: var(--control-h);
 }
 .buy__row input {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   accent-color: var(--c-accent);
 }
 .buy__area {
-  padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-sm);
-  background: var(--c-surface);
   max-width: 45%;
 }
-.danger {
-  width: 100%;
+.btn-danger {
   margin-top: var(--s-2);
-  padding: var(--s-3);
-  border: none;
-  border-radius: var(--r-md);
-  background: var(--c-danger-soft);
-  color: var(--c-danger);
-  font-weight: 600;
 }
 </style>

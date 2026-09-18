@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import GroceriesGlyph from '@/components/GroceriesGlyph.vue';
 
 const auth = useAuthStore();
 const password = ref('');
@@ -25,21 +26,10 @@ async function submit() {
   <div class="login">
     <div class="login__inner">
       <div class="login__mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="34" height="34">
-          <path
-            d="M3 4h2l2.4 12.3a2 2 0 0 0 2 1.7h8.2a2 2 0 0 0 2-1.6L23 8H6"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          <circle cx="10" cy="21" r="1.6" fill="currentColor" />
-          <circle cx="18" cy="21" r="1.6" fill="currentColor" />
-        </svg>
+        <GroceriesGlyph style="width: 34px; height: 34px" />
       </div>
       <h1 class="login__title">Family Grocery</h1>
-      <p class="login__sub">
+      <p id="login-label" class="login__sub">
         {{ auth.configured ? 'Enter the family password' : 'Choose a family password' }}
       </p>
 
@@ -49,6 +39,7 @@ async function submit() {
             :type="show ? 'text' : 'password'"
             v-model="password"
             class="login__input"
+            aria-labelledby="login-label"
             :placeholder="auth.configured ? 'Password' : 'New password'"
             autocomplete="current-password"
             autocapitalize="off"
@@ -58,7 +49,7 @@ async function submit() {
           />
           <button
             type="button"
-            class="login__peek"
+            class="login__peek hit"
             :aria-label="show ? 'Hide password' : 'Show password'"
             @click="show = !show"
           >
@@ -68,7 +59,7 @@ async function submit() {
 
         <button
           type="submit"
-          class="login__submit"
+          class="btn-primary"
           :disabled="busy || password.length < 4"
         >
           {{ busy ? '…' : auth.configured ? 'Unlock' : 'Create' }}
@@ -111,6 +102,7 @@ async function submit() {
 .login__sub {
   margin: 0 0 var(--s-5);
   color: var(--c-text-dim);
+  line-height: 1.5;
 }
 .login__form {
   display: flex;
@@ -120,6 +112,7 @@ async function submit() {
 .login__field {
   display: flex;
   align-items: center;
+  min-height: var(--control-h);
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--r-md);
@@ -128,7 +121,7 @@ async function submit() {
 .login__input {
   flex: 1;
   min-width: 0;
-  padding: var(--s-4);
+  padding: 0 var(--s-3);
   border: none;
   background: none;
   border-radius: var(--r-md);
@@ -138,6 +131,7 @@ async function submit() {
 }
 .login__field:focus-within {
   border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-soft);
 }
 .login__peek {
   border: none;
@@ -146,21 +140,6 @@ async function submit() {
   font-size: var(--t-caption);
   font-weight: 600;
   padding: var(--s-2);
-}
-.login__submit {
-  padding: var(--s-4);
-  border: none;
-  border-radius: var(--r-md);
-  background: var(--c-accent);
-  color: var(--c-accent-contrast);
-  font-size: var(--t-body);
-  font-weight: 700;
-}
-.login__submit:disabled {
-  opacity: 0.45;
-}
-.login__submit:active {
-  transform: scale(0.98);
 }
 .login__err {
   margin: 0;

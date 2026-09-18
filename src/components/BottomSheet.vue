@@ -70,8 +70,11 @@ function onTouchEnd() {
         <header v-if="title || !hideClose" class="sheet__head">
           <DialogTitle v-if="title" class="sheet__title">{{ title }}</DialogTitle>
           <span v-else />
-          <DialogClose v-if="!hideClose" class="sheet__close" aria-label="Close">
-            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <DialogClose v-if="!hideClose" class="sheet__close hit" aria-label="Close">
+            <!-- SVG fills the circle; the glyph is centred by the viewBox, so it
+                 can't drift a sub-pixel off centre on fractional-DPR / Display-Zoom
+                 screens (which is what "box-in-box" centring does). -->
+            <svg viewBox="-4 -4 32 32" aria-hidden="true">
               <path
                 d="M6 6l12 12M18 6L6 18"
                 stroke="currentColor"
@@ -100,8 +103,8 @@ function onTouchEnd() {
 }
 .sheet {
   position: fixed;
-  left: var(--s-2);
-  right: var(--s-2);
+  left: calc(var(--app-edge) + var(--s-2));
+  right: calc(var(--app-edge) + var(--s-2));
   bottom: calc(var(--safe-b) + var(--s-2));
   z-index: 41;
   display: flex;
@@ -139,14 +142,17 @@ function onTouchEnd() {
   font-weight: 700;
 }
 .sheet__close {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 32px;
   height: 32px;
   border: none;
   border-radius: var(--r-full);
   background: var(--c-surface-2);
   color: var(--c-text-dim);
+}
+.sheet__close svg {
+  width: 100%;
+  height: 100%;
 }
 .sheet__body {
   overflow-y: auto;

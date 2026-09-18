@@ -9,9 +9,6 @@ export const useSyncStore = defineStore('sync', {
     lastSyncedAt: 0,
     lastError: '' as string,
   }),
-  getters: {
-    hasPending: (s) => s.pendingCount > 0,
-  },
   actions: {
     setStatus(status: SyncState, error = '') {
       this.status = status;

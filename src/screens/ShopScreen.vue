@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import ScreenHeader from '@/components/ScreenHeader.vue';
+import GroceriesGlyph from '@/components/GroceriesGlyph.vue';
 import ShopRow from '@/components/ShopRow.vue';
-import StorePickerSheet from '@/components/StorePickerSheet.vue';
+import StorePicker from '@/components/StorePicker.vue';
 import ItemSheet from '@/components/ItemSheet.vue';
 import ConfirmSheet from '@/components/ConfirmSheet.vue';
 import { useDataStore } from '@/stores/data';
@@ -34,7 +35,6 @@ const currentStoreName = computed(() =>
   storeId.value ? (data.get('stores', storeId.value)?.name ?? 'Store') : 'Any store',
 );
 
-const pickerOpen = ref(false);
 const itemOpen = ref(false);
 const itemProductId = ref<string | null>(null);
 const notSoldOpen = ref(false);
@@ -60,6 +60,8 @@ const finishMessage = computed(() => {
 });
 
 const { distance, refreshing } = usePullToRefresh(() => syncNow());
+/** height (px) the pull-to-refresh spinner strip reaches at full pull */
+const PTR_HEIGHT = 44;
 
 function openItem(productId: string) {
   itemProductId.value = productId;
@@ -67,14 +69,9 @@ function openItem(productId: string) {
 }
 
 async function toggle(productId: string, checked: boolean) {
+  // No toast: a bought item stays in place (struck through / hidden), and
+  // tapping it again puts it straight back — so an Undo prompt is just noise.
   await setNeedStatus(productId, checked ? 'in_cart' : 'needed');
-  if (checked) {
-    const name = data.get('products', productId)?.name ?? 'Item';
-    showToast(`${name} in cart`, {
-      action: { label: 'Undo', run: () => setNeedStatus(productId, 'needed') },
-      duration: 3500,
-    });
-  }
 }
 
 async function removeItem(productId: string, name: string) {
@@ -105,19 +102,18 @@ const empty = computed(
   <div class="screen">
     <ScreenHeader :title="currentStoreName">
       <template #actions>
-        <button class="switch" @click="pickerOpen = true">
-          <span>{{ view.coverage.covered }}/{{ view.coverage.total }}</span>
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-            <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
+        <StorePicker
+          :selected="storeId"
+          :label="`${view.coverage.covered}/${view.coverage.total}`"
+          @pick="shop.selectStore($event)"
+        />
       </template>
     </ScreenHeader>
 
     <div
       v-if="distance > 0 || refreshing"
       class="ptr"
-      :style="{ height: `${Math.min(distance, 1) * 44}px`, opacity: Math.min(distance, 1) }"
+      :style="{ height: `${Math.min(distance, 1) * PTR_HEIGHT}px`, opacity: Math.min(distance, 1) }"
     >
       <span class="ptr__spin" :class="{ 'is-active': refreshing }">↻</span>
     </div>
@@ -136,12 +132,13 @@ const empty = computed(
       </div>
       <button
         v-if="view.boughtCount > 0"
-        class="eye"
+        class="eye hit"
         :aria-pressed="shop.showBought"
         :aria-label="shop.showBought ? 'Hide bought items' : 'Show bought items'"
         @click="shop.setShowBought(!shop.showBought)"
       >
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <!-- SVG fills the button; icon centred by the viewBox (see FabButton) -->
+        <svg viewBox="-10 -10 44 44" aria-hidden="true">
           <path
             d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
             fill="none"
@@ -160,20 +157,23 @@ const empty = computed(
           />
         </svg>
       </button>
-      <button class="finish" @click="finishOpen = true">Finish</button>
+      <button class="finish hit" @click="finishOpen = true">Finish</button>
     </div>
 
     <div class="body">
-      <p v-if="empty" class="empty">
-        <template v-if="!hasStores">
-          Add the stores you shop at on the Stores tab to get an aisle-by-aisle
-          list.
-        </template>
-        <template v-else>
-          Nothing to buy{{ storeId ? ' here' : '' }} yet.<br />
-          Add items from the Products tab.
-        </template>
-      </p>
+      <div v-if="empty" class="empty">
+        <GroceriesGlyph class="empty__icon" />
+        <p class="empty__text">
+          <template v-if="!hasStores">
+            Add the stores you shop at on the Stores tab to get an aisle-by-aisle
+            list.
+          </template>
+          <template v-else>
+            Nothing to buy{{ storeId ? ' here' : '' }} yet.<br />
+            Add items from the Products tab.
+          </template>
+        </p>
+      </div>
 
       <section v-for="g in view.groups" :key="g.key" class="group">
         <button class="group__head" @click="shop.toggleGroup(g.key)">
@@ -187,8 +187,10 @@ const empty = computed(
           >
             <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <span class="group__title">{{ g.title }}</span>
-          <span class="group__count">{{ g.items.length }}</span>
+          <span class="group__label">
+            <span class="group__title u-eyebrow">{{ g.title }}</span>
+            <span class="group__count">{{ g.items.length }}</span>
+          </span>
         </button>
         <div v-if="!shop.collapsed.has(g.key)" class="group__items">
           <ShopRow
@@ -197,7 +199,6 @@ const empty = computed(
             :item="it"
             :checked="it.bought"
             :collapse-on-check="!shop.showBought"
-            :show-stores="!storeId"
             @toggle="toggle(it.product.id, !it.bought)"
             @remove="removeItem(it.product.id, it.product.name)"
             @open="openItem(it.product.id)"
@@ -210,8 +211,10 @@ const empty = computed(
           <svg class="group__chev" :class="{ 'is-collapsed': !notSoldOpen }" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <span class="group__title">Not sold here</span>
-          <span class="group__count">{{ view.notSoldHere.length }}</span>
+          <span class="group__label">
+            <span class="group__title u-eyebrow">Not sold here</span>
+            <span class="group__count">{{ view.notSoldHere.length }}</span>
+          </span>
         </button>
         <div v-if="notSoldOpen" class="group__items">
           <ShopRow
@@ -220,7 +223,6 @@ const empty = computed(
             :item="it"
             :checked="it.bought"
             :collapse-on-check="!shop.showBought"
-            show-stores
             @toggle="toggle(it.product.id, !it.bought)"
             @remove="removeItem(it.product.id, it.product.name)"
             @open="openItem(it.product.id)"
@@ -229,11 +231,6 @@ const empty = computed(
       </section>
     </div>
 
-    <StorePickerSheet
-      v-model:open="pickerOpen"
-      :selected="storeId"
-      @pick="shop.selectStore($event)"
-    />
     <ItemSheet
       v-model:open="itemOpen"
       :product-id="itemProductId"
@@ -255,18 +252,6 @@ const empty = computed(
   flex-direction: column;
   min-height: 100%;
 }
-.switch {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px 6px 12px;
-  border: none;
-  border-radius: var(--r-full);
-  background: var(--c-accent-soft);
-  color: var(--c-accent);
-  font-weight: 700;
-  font-size: var(--t-body-sm);
-}
 .ptr {
   display: grid;
   place-items: center;
@@ -282,21 +267,23 @@ const empty = computed(
   z-index: 6;
   display: flex;
   align-items: center;
-  gap: var(--s-3);
+  gap: var(--s-4);
   padding: var(--s-2) var(--s-4);
   background: var(--c-bg);
-  border-bottom: 1px solid var(--c-border);
 }
 .eye {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
+  padding: 0;
   border: none;
   border-radius: var(--r-full);
   background: var(--c-surface-2);
   color: var(--c-text-dim);
+}
+.eye svg {
+  width: 100%;
+  height: 100%;
 }
 .eye[aria-pressed='true'] {
   background: var(--c-accent-soft);
@@ -308,7 +295,7 @@ const empty = computed(
 .progress {
   position: relative;
   flex: 1;
-  height: 26px;
+  height: var(--control-h-sm);
   background: var(--c-surface-2);
   border-radius: var(--r-full);
   overflow: hidden;
@@ -324,7 +311,7 @@ const empty = computed(
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: var(--t-caption);
+  font-size: var(--t-body-sm);
   font-weight: 600;
   color: var(--c-text-dim);
 }
@@ -333,10 +320,22 @@ const empty = computed(
   padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--s-4));
 }
 .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-4);
   color: var(--c-text-dim);
   text-align: center;
   padding: var(--s-6) var(--s-4);
-  line-height: 1.6;
+  line-height: 1.5;
+}
+.empty__icon {
+  width: 72px;
+  height: 72px;
+  color: var(--c-text-faint);
+}
+.empty__text {
+  margin: 0;
 }
 .group {
   margin-bottom: var(--s-2);
@@ -346,13 +345,13 @@ const empty = computed(
   align-items: center;
   gap: var(--s-2);
   width: 100%;
-  padding: var(--s-2) var(--s-4);
+  padding: var(--s-3) var(--s-4) var(--s-2);
   border: none;
   background: none;
   color: var(--c-text-dim);
 }
 .group__items {
-  padding-left: var(--s-3);
+  padding-left: var(--s-2);
 }
 .group__chev {
   transition: transform var(--dur) var(--ease);
@@ -363,20 +362,24 @@ const empty = computed(
 .group__chev:not(.is-collapsed) {
   transform: rotate(90deg);
 }
-.group__title {
-  font-size: var(--t-caption);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.group__label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
 }
 .group__count {
-  margin-left: auto;
   font-size: var(--t-caption);
   color: var(--c-text-faint);
 }
+.group__count::before {
+  content: '×\00a0';
+}
 .finish {
   flex: none;
-  padding: 7px 14px;
+  display: grid;
+  place-items: center;
+  min-height: var(--control-h-sm);
+  padding: 0 var(--s-4);
   border: none;
   border-radius: var(--r-full);
   background: var(--c-accent);

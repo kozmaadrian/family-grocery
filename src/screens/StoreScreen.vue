@@ -33,7 +33,6 @@ const dragAreas = ref<Area[]>([...sortedAreas.value]);
 dragAndDrop<Area>({
   parent: dragParent,
   values: dragAreas,
-  longPress: true,
   dragHandle: '.area__grip',
 });
 
@@ -97,17 +96,21 @@ async function onDeleteStore() {
 
       <div ref="dragParent" class="areas">
         <div v-for="area in dragAreas" :key="area.id" class="area">
-          <button class="area__grip" aria-label="Reorder">
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
-            </svg>
-          </button>
-          <button class="area__name" @click="renameArea = area">{{ area.name }}</button>
           <button class="area__del" aria-label="Delete area" @click="onDeleteArea(area)">
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <!-- SVG fills the button; the glyph is centred by the viewBox so it
+                 can't drift a sub-pixel off centre on fractional-DPR / Display-Zoom
+                 screens (see CheckCircle.vue / BottomSheet.vue). -->
+            <svg viewBox="-12 -12 44 44" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
             </svg>
           </button>
+          <button class="area__name" @click="renameArea = area">{{ area.name }}</button>
+          <!-- span, not <button>: a button blocks native HTML5 drag in Chrome -->
+          <span class="area__grip" role="button" aria-label="Reorder">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+            </svg>
+          </span>
         </div>
       </div>
 
@@ -118,7 +121,7 @@ async function onDeleteStore() {
         Add aisle
       </button>
 
-      <button class="danger" @click="confirmDeleteOpen = true">Delete store</button>
+      <button class="btn-danger" @click="confirmDeleteOpen = true">Delete store</button>
     </div>
 
     <ConfirmSheet
@@ -163,11 +166,14 @@ async function onDeleteStore() {
   min-height: 100%;
 }
 .txt {
+  display: grid;
+  place-items: center;
+  min-height: var(--control-h);
   border: none;
   background: none;
   color: var(--c-accent);
   font-weight: 600;
-  padding: var(--s-2);
+  padding: 0 var(--s-2);
 }
 .body {
   padding: var(--s-2) var(--s-4) var(--s-6);
@@ -175,6 +181,7 @@ async function onDeleteStore() {
 .hint {
   color: var(--c-text-dim);
   font-size: var(--t-body-sm);
+  line-height: 1.5;
   margin: 0 0 var(--s-4);
 }
 .areas {
@@ -194,31 +201,39 @@ async function onDeleteStore() {
 .area__grip {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 40px;
-  border: none;
-  background: none;
+  width: 44px;
+  height: 44px;
   color: var(--c-text-faint);
   cursor: grab;
   touch-action: none;
 }
+.area__grip:active {
+  cursor: grabbing;
+}
+.area__grip svg {
+  pointer-events: none;
+}
 .area__name {
   flex: 1;
+  min-height: var(--control-h);
   text-align: left;
   border: none;
   background: none;
-  padding: var(--s-2) 0;
+  padding: 0;
   font-size: var(--t-body);
 }
 .area__del {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
+  display: block;
+  width: var(--control-h);
+  height: var(--control-h);
   border: none;
   border-radius: var(--r-full);
   background: none;
   color: var(--c-text-faint);
+}
+.area__del svg {
+  width: 100%;
+  height: 100%;
 }
 .area__del:active {
   background: var(--c-danger-soft);
@@ -230,23 +245,17 @@ async function onDeleteStore() {
   justify-content: center;
   gap: var(--s-2);
   width: 100%;
+  min-height: var(--control-h);
   margin-top: var(--s-3);
-  padding: var(--s-3);
+  padding: 0 var(--s-3);
   border: 1px dashed var(--c-border);
   border-radius: var(--r-md);
   background: none;
   color: var(--c-accent);
   font-weight: 600;
 }
-.danger {
-  width: 100%;
+.btn-danger {
   margin-top: var(--s-6);
-  padding: var(--s-3);
-  border: none;
-  border-radius: var(--r-md);
-  background: var(--c-danger-soft);
-  color: var(--c-danger);
-  font-weight: 600;
 }
 :deep(.dnd-dragging) {
   opacity: 0.4;

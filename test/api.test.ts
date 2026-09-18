@@ -5,11 +5,22 @@ import type { Product, SyncResponse } from '@shared/types';
 const PASSWORD = 'family-secret';
 let token = '';
 
-async function api(path: string, body: unknown, auth = true): Promise<Response> {
+// All functional tests share one client IP so the rate-limit buckets are
+// predictable. Budget on this IP: <10 auth-route calls, <200 total (see the
+// limits in vitest.config.ts). Tests that probe rate limiting use their own IP.
+const FN_IP = '203.0.113.7';
+
+async function api(
+  path: string,
+  body: unknown,
+  auth = true,
+  ip: string = FN_IP,
+): Promise<Response> {
   return SELF.fetch(`https://t.local${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'CF-Connecting-IP': ip,
       ...(auth && token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
@@ -35,7 +46,7 @@ beforeAll(async () => {
 
 describe('auth', () => {
   it('rejects a second setup', async () => {
-    const res = await api('/api/setup', { password: 'other' }, false);
+    const res = await api('/api/setup', { password: 'another-valid-password' }, false);
     expect(res.status).toBe(409);
   });
 
@@ -56,6 +67,59 @@ describe('auth', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cursor: 0, changes: {} }),
     });
+    expect(res.status).toBe(401);
+  });
+
+  it('logout-all revokes every token', async () => {
+    // a second device signs in
+    const other = ((await (await api('/api/auth', { password: PASSWORD }, false)).json()) as {
+      token: string;
+    }).token;
+
+    const res = await api('/api/logout-all', {});
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { count: number }).count).toBeGreaterThanOrEqual(2);
+
+    // both the other device's token and our own are now dead
+    for (const dead of [other, token]) {
+      const stale = await SELF.fetch('https://t.local/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${dead}` },
+        body: JSON.stringify({ cursor: 0, changes: {} }),
+      });
+      expect(stale.status).toBe(401);
+    }
+  });
+
+  it('rejects logout-all without a token', async () => {
+    const res = await SELF.fetch('https://t.local/api/logout-all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('records sign-in attempts in the log', async () => {
+    await api('/api/auth', { password: 'wrong' }, false); // failure
+    await api('/api/auth', { password: PASSWORD }, false); // success
+
+    const res = await SELF.fetch('https://t.local/api/auth-log', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+    const { entries } = (await res.json()) as {
+      entries: { kind: string; ok: 0 | 1 }[];
+    };
+    // newest first: the successful unlock, then the failed one
+    expect(entries[0]).toMatchObject({ kind: 'unlock', ok: 1 });
+    expect(entries[1]).toMatchObject({ kind: 'unlock', ok: 0 });
+    // the initial setup is in there too
+    expect(entries.some((e) => e.kind === 'setup' && e.ok === 1)).toBe(true);
+  });
+
+  it('rejects the auth log without a token', async () => {
+    const res = await SELF.fetch('https://t.local/api/auth-log');
     expect(res.status).toBe(401);
   });
 });
@@ -109,7 +173,8 @@ describe('sync merge semantics', () => {
   it('tombstones propagate', async () => {
     await sync(0, { products: [product({ id: 'p6', name: 'Butter', updated_at: now })] });
     const res = await sync(0, {
-      products: [product({ id: 'p6', name: 'Butter', updated_at: now + 1000, deleted: 1 })],
+      // comfortably ahead of the server-stamped time so LWW accepts the delete
+      products: [product({ id: 'p6', name: 'Butter', updated_at: now + 60_000, deleted: 1 })],
     });
     const row = res.changes.products?.find((p) => p.id === 'p6');
     expect(row?.deleted).toBe(1);
@@ -125,5 +190,40 @@ describe('sync merge semantics', () => {
     const ids = (res.changes.products ?? []).map((p) => p.id);
     expect(ids).toContain('p8');
     expect(ids).not.toContain('p7');
+  });
+});
+
+describe('abuse protection', () => {
+  it('rate-limits repeated auth attempts from one IP', async () => {
+    const ip = '198.51.100.42';
+    let limitedRes: Response | undefined;
+    // AUTH_RL is 10/60s in the test config; a burst blows past it.
+    for (let i = 0; i < 20; i++) {
+      const res = await api('/api/auth', { password: PASSWORD }, false, ip);
+      if (res.status === 429) {
+        limitedRes = res;
+        break;
+      }
+    }
+    expect(limitedRes).toBeDefined();
+    expect(limitedRes?.headers.get('Retry-After')).toBe('60');
+  });
+
+  it('rejects an oversized request body', async () => {
+    const res = await SELF.fetch('https://t.local/api/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': String(2 * 1024 * 1024),
+        'CF-Connecting-IP': '198.51.100.99',
+      },
+      body: 'x'.repeat(2 * 1024 * 1024),
+    });
+    expect(res.status).toBe(413);
+  });
+
+  it('setup demands an 8+ character password', async () => {
+    const res = await api('/api/setup', { password: 'short' }, false, '198.51.100.7');
+    expect(res.status).toBe(400);
   });
 });

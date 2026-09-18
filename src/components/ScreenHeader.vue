@@ -1,25 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAppStore } from '@/stores/app';
 import { useSyncStore } from '@/stores/sync';
 import { syncNow } from '@/lib/sync';
-import { useScrolled } from '@/lib/useScrolled';
 
-const props = withDefaults(
-  defineProps<{ title: string; settings?: boolean; back?: string }>(),
-  { settings: true },
-);
+const props = defineProps<{ title: string; back?: string }>();
 
-const app = useAppStore();
 const sync = useSyncStore();
 const router = useRouter();
-const scrolled = useScrolled(10);
 
 const syncBadge = computed(() => {
   if (sync.status === 'syncing') return { text: 'Syncing…', kind: 'busy' };
   if (sync.status === 'offline') return { text: 'Offline', kind: 'warn' };
-  if (sync.status === 'error') return { text: 'Sync failed — retry', kind: 'warn' };
+  if (sync.status === 'error') return { text: 'Sync failed', kind: 'warn' };
   if (sync.pendingCount > 0) return { text: `${sync.pendingCount} to sync`, kind: 'busy' };
   return null;
 });
@@ -31,8 +24,8 @@ function goBack() {
 </script>
 
 <template>
-  <header class="hdr" :data-collapsed="scrolled">
-    <button v-if="back !== undefined" class="hdr__back" aria-label="Back" @click="goBack">
+  <header class="hdr">
+    <button v-if="back !== undefined" class="hdr__back hit" aria-label="Back" @click="goBack">
       <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
@@ -48,29 +41,6 @@ function goBack() {
         {{ syncBadge.text }}
       </button>
       <slot name="actions" />
-      <button
-        v-if="settings"
-        class="hdr__gear"
-        aria-label="Settings"
-        @click="app.settingsOpen = true"
-      >
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-          <path
-            d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-          <path
-            d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 0 1-4 0v-.1A1.7 1.7 0 0 0 7 19.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13H3a2 2 0 0 1 0-4h.1A1.7 1.7 0 0 0 4.8 7L4.7 6.9A2 2 0 1 1 7.5 4.1l.1.1A1.7 1.7 0 0 0 10.5 3.4V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6 1H22a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </button>
     </div>
   </header>
 </template>
@@ -84,17 +54,11 @@ function goBack() {
   align-items: center;
   justify-content: space-between;
   gap: var(--s-3);
-  padding: calc(var(--safe-t) + var(--s-3)) var(--s-4) var(--s-3);
+  /* one fixed height on every screen — no scroll-collapse, nothing moves */
+  min-height: calc(var(--safe-t) + var(--header-h));
+  padding: var(--safe-t) var(--s-4) 0;
   background: var(--c-bg);
-  border-bottom: 1px solid transparent;
-  transition:
-    padding var(--dur) var(--ease),
-    border-color var(--dur) var(--ease);
-}
-.hdr[data-collapsed='true'] {
-  padding-top: calc(var(--safe-t) + var(--s-2));
-  padding-bottom: var(--s-2);
-  border-bottom-color: var(--c-border);
+  border-bottom: 1px solid var(--c-hairline);
 }
 .hdr__back {
   display: grid;
@@ -117,43 +81,34 @@ function goBack() {
   font-size: var(--t-screen);
   font-weight: 700;
   letter-spacing: -0.02em;
-  transition: font-size var(--dur) var(--ease);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.hdr[data-collapsed='true'] .hdr__title {
-  font-size: var(--t-title);
 }
 .hdr__actions {
   display: flex;
   align-items: center;
   gap: var(--s-2);
 }
+/* same chip metrics as .pill (the store picker), so header chips match */
 .hdr__sync {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h-sm);
+  max-width: 40vw;
+  padding: 0 var(--s-3);
   border: none;
   border-radius: var(--r-full);
-  padding: 4px 10px;
-  font-size: var(--t-caption);
-  font-weight: 600;
   background: var(--c-surface-2);
   color: var(--c-text-dim);
+  font-size: var(--t-body-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hdr__sync[data-kind='warn'] {
   background: var(--c-danger-soft);
   color: var(--c-danger);
-}
-.hdr__gear {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: var(--r-full);
-  background: var(--c-surface-2);
-  color: var(--c-text-dim);
-}
-.hdr__gear:active {
-  transform: scale(0.94);
 }
 </style>

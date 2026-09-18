@@ -78,6 +78,20 @@ export interface AuthResponse {
   token: string;
 }
 
+export type AuthEventKind = 'setup' | 'unlock' | 'logout-all';
+
+export interface AuthLogEntry {
+  at: number;
+  kind: AuthEventKind;
+  ok: 0 | 1;
+  user_agent: string | null;
+  ip: string | null;
+}
+
+export interface AuthLogResponse {
+  entries: AuthLogEntry[];
+}
+
 export interface ApiError {
   error: string;
 }

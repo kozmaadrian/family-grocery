@@ -79,7 +79,7 @@ async function run() {
 
     <textarea
       v-model="text"
-      class="ta"
+      class="input ta"
       rows="8"
       placeholder="Paste here…"
       spellcheck="false"
@@ -105,7 +105,7 @@ async function run() {
       Clear all current stores &amp; products first (replace)
     </label>
 
-    <button class="go" :class="{ 'go--danger': replace }" :disabled="busy || !text.trim()" @click="run">
+    <button class="btn-primary" :class="{ 'go--danger': replace }" :disabled="busy || !text.trim()" @click="run">
       {{ busy ? 'Importing…' : replace ? 'Replace & import' : 'Import' }}
     </button>
   </BottomSheet>
@@ -122,7 +122,7 @@ async function run() {
   background: var(--c-surface-2);
   padding: 0 4px;
   border-radius: var(--r-sm);
-  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .fmt {
   margin-bottom: var(--s-3);
@@ -147,19 +147,9 @@ async function run() {
   color: var(--c-text-faint);
 }
 .ta {
-  width: 100%;
   margin-bottom: var(--s-3);
-  padding: var(--s-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-  background: var(--c-surface);
-  font: inherit;
-  font-size: var(--t-body-sm);
+  font-size: var(--t-body-sm); /* 16px — also keeps iOS Safari from zooming on focus */
   resize: vertical;
-}
-.ta:focus {
-  outline: none;
-  border-color: var(--c-accent);
 }
 .res {
   display: flex;
@@ -190,18 +180,6 @@ async function run() {
   height: 18px;
   accent-color: var(--c-danger);
   flex: none;
-}
-.go {
-  width: 100%;
-  padding: var(--s-4);
-  border: none;
-  border-radius: var(--r-md);
-  background: var(--c-accent);
-  color: var(--c-accent-contrast);
-  font-weight: 700;
-}
-.go:disabled {
-  opacity: 0.45;
 }
 .go--danger {
   background: var(--c-danger);

@@ -102,15 +102,6 @@ export async function setNeedStatus(productId: string, status: NeedStatus): Prom
   await data().upsert('needs', { ...cur, status });
 }
 
-export async function updateNeed(
-  productId: string,
-  patch: { qty?: string | null; note?: string | null },
-): Promise<void> {
-  const cur = data().get('needs', needId(productId));
-  if (!cur) return;
-  await data().upsert('needs', { ...cur, ...patch });
-}
-
 /**
  * The needs "Finish shopping" would clear for a store: everything on that store's
  * list — bought and not — but not items the store doesn't carry. In "Any store"
@@ -241,13 +232,6 @@ export function placementsForStore(storeId: string): Placement[] {
 
 export function placement(productId: string, storeId: string): Placement | undefined {
   return data().get('placements', placementId(productId, storeId));
-}
-
-export function storesForProduct(productId: string): string[] {
-  return data()
-    .active('placements')
-    .filter((p) => p.product_id === productId)
-    .map((p) => p.store_id);
 }
 
 export async function setPlacement(

@@ -59,20 +59,16 @@ export function useShoppingView(
       storeNames: storeNamesByProduct(need.product_id),
     });
 
-    // bought items sink below un-bought ones within a group
+    // keep every row in its aisle position — bought items stay put (and just
+    // hide when `showBought` is off) rather than jumping to the end
     const byOrder = (a: ShopItem, b: ShopItem) =>
-      Number(a.bought) - Number(b.bought) ||
       (a.placement?.position ?? 0) - (b.placement?.position ?? 0);
 
     // "Any store" — one flat list.
     if (!storeId.value) {
       const all = listable
         .map((n) => toItem(n))
-        .sort(
-          (a, b) =>
-            Number(a.bought) - Number(b.bought) ||
-            a.product.name.localeCompare(b.product.name),
-        );
+        .sort((a, b) => a.product.name.localeCompare(b.product.name));
       return {
         groups: all.length ? [{ key: 'all', title: 'To buy', items: all }] : [],
         notSoldHere: [],

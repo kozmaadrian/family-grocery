@@ -36,13 +36,13 @@ function submit() {
     <input
       ref="input"
       v-model="value"
-      class="inp"
+      class="input"
       :placeholder="placeholder"
       enterkeyhint="done"
       autofocus
       @keydown.enter="submit"
     />
-    <button class="go" :disabled="value.trim().length === 0" @click="submit">
+    <button class="btn-primary" :disabled="value.trim().length === 0" @click="submit">
       {{ submitLabel ?? 'Save' }}
     </button>
   </BottomSheet>
@@ -56,28 +56,7 @@ function submit() {
   font-weight: 600;
   color: var(--c-text-dim);
 }
-.inp {
-  width: 100%;
-  padding: var(--s-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-  background: var(--c-surface);
+.input {
   margin-bottom: var(--s-3);
-}
-.inp:focus {
-  outline: none;
-  border-color: var(--c-accent);
-}
-.go {
-  width: 100%;
-  padding: var(--s-4);
-  border: none;
-  border-radius: var(--r-md);
-  background: var(--c-accent);
-  color: var(--c-accent-contrast);
-  font-weight: 700;
-}
-.go:disabled {
-  opacity: 0.45;
 }
 </style>

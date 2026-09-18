@@ -2,22 +2,17 @@
 import { computed, ref, watch } from 'vue';
 import type { ShopItem } from '@/lib/shopping';
 import CheckCircle from './CheckCircle.vue';
-import QtyChip from './QtyChip.vue';
-import NoteLabel from './NoteLabel.vue';
 
 const props = defineProps<{
   item: ShopItem;
   checked: boolean;
-  showStores?: boolean;
   /** play a collapse-out animation when checked (bought items are hidden) */
   collapseOnCheck?: boolean;
 }>();
 const emit = defineEmits<{ toggle: []; remove: []; open: [] }>();
 
-// per-trip value wins, else the product's default
-const qty = computed(() => props.item.need.qty || props.item.product.default_qty || '');
-const note = computed(() => props.item.need.note || props.item.product.note || '');
-const hasChips = computed(() => Boolean(props.showStores && props.item.storeNames.length));
+const qty = computed(() => props.item.product.default_qty || '');
+const note = computed(() => props.item.product.note || '');
 
 // check-off animation: fill + strike, then (optionally) collapse away
 type Phase = 'idle' | 'checking' | 'leaving';
@@ -97,22 +92,18 @@ function onPressEnd() {
       @touchmove.passive="onPressEnd"
     >
       <CheckCircle
+        class="row__check"
         :checked="shownChecked"
         :label="checked ? `Move ${item.product.name} back to list` : `Put ${item.product.name} in cart`"
         @toggle="onCheck"
       />
 
       <button class="row__body" @click="emit('open')">
-        <span class="row__main">
+        <span class="row__head">
           <span class="row__name" :class="{ 'is-done': shownChecked }">{{ item.product.name }}</span>
-          <span v-if="hasChips" class="row__sub">
-            <span v-for="s in item.storeNames" :key="s" class="chip">{{ s }}</span>
-          </span>
+          <span v-if="qty" class="row__qty" :class="{ 'is-dim': shownChecked }">×&nbsp;{{ qty }}</span>
         </span>
-        <span v-if="qty || note" class="row__aside">
-          <QtyChip v-if="qty" :qty="qty" :dim="shownChecked" />
-          <NoteLabel v-if="note" :text="note" />
-        </span>
+        <span v-if="note" class="row__note">{{ note }}</span>
       </button>
     </div>
   </div>
@@ -139,11 +130,10 @@ function onPressEnd() {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--s-3);
+  gap: var(--s-4);
   padding: var(--s-3) var(--s-4);
-  min-height: 56px;
+  min-height: var(--row-h);
   background: var(--c-bg);
-  border-bottom: 1px solid var(--c-border);
   overflow: hidden;
   transition:
     min-height 0.24s var(--ease),
@@ -164,50 +154,50 @@ function onPressEnd() {
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: var(--s-3);
+  flex-direction: column;
+  gap: 2px;
   border: none;
   background: none;
   text-align: left;
   padding: 0;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
+.row__head {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: baseline;
+  gap: var(--s-3);
 }
 .row__name {
+  flex: 1;
   min-width: 0;
   font-size: var(--t-body);
+  font-weight: 600;
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .row__name.is-done {
   color: var(--c-text-faint);
+  font-weight: 500;
   text-decoration: line-through;
 }
-.row__sub {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: var(--t-caption);
-  color: var(--c-text-dim);
-}
-.row__aside {
+.row__qty {
   flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  max-width: 46%;
+  font-size: var(--t-body-sm);
+  font-weight: 600;
+  color: var(--c-text);
+  white-space: nowrap;
 }
-.chip {
-  background: var(--c-surface-2);
-  padding: 1px 7px;
-  border-radius: var(--r-full);
+.row__qty.is-dim {
+  color: var(--c-text-faint);
+}
+.row__note {
+  min-width: 0;
+  font-size: var(--t-body-sm);
+  line-height: 1.35;
+  color: var(--c-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

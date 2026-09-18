@@ -5,12 +5,12 @@
 //   node scripts/seed.mjs [--fresh] [password] [apiBase]
 //
 // --fresh first tombstones every existing row (clean slate), then seeds.
-// Defaults: password "grocery123", apiBase http://localhost:8787
+// Defaults: password "dev-seed-password", apiBase http://localhost:8787
 
 const args = process.argv.slice(2);
 const FRESH = args.includes('--fresh');
 const rest = args.filter((a) => a !== '--fresh');
-const PASSWORD = rest[0] || 'grocery123';
+const PASSWORD = rest[0] || 'dev-seed-password';
 const API = (rest[1] || 'http://localhost:8787').replace(/\/$/, '');
 
 // Filled in at send time — must be after any --fresh tombstones so LWW keeps the seed.
