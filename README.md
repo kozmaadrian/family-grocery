@@ -26,7 +26,6 @@ on it:
 
 ```bash
 npm install
-cp wrangler.toml.example wrangler.toml
 cp .dev.vars.example .dev.vars    # for development, edit AUTH_SECRET too
 npm run db:migrate:local          # create/upgrade the local database
 npm run dev                       # Vite on :5173, Worker + D1 on :8787
@@ -38,10 +37,9 @@ machine; the first load asks you to choose a password. A deployed instance
 exactly the same way. "Add to Home Screen" (in Settings) is optional — it
 makes the app feel native and work offline, but isn't required to use it.
 
-`wrangler.toml` and `.dev.vars` are your own local files — both are
-git-ignored, so nothing you put in them (including your real database id)
-ever shows up as a change to commit. Only the `.example` versions, with
-placeholder values, are tracked.
+`wrangler.toml` ships with placeholder resource ids — `npm run setup` (below)
+fills in your real ones once it creates your database. `.dev.vars` is your
+own local file, git-ignored, for local secrets.
 
 ## Deploy to your own Cloudflare account
 
@@ -78,9 +76,8 @@ every step there is a single, ordinary `wrangler` command.
 Every Worker gets a free address in the form
 `<name>.<your-subdomain>.workers.dev`.
 
-- **`<name>`** — edit the `name` field at the top of your local
-  `wrangler.toml` (e.g. `name = "smith-family-list"`; see
-  [wrangler.toml.example](wrangler.toml.example) for the full file), then
+- **`<name>`** — edit the `name` field at the top of
+  [wrangler.toml](wrangler.toml) (e.g. `name = "smith-family-list"`), then
   redeploy with `npm run deploy`. Cloudflare treats this as a distinct Worker,
   so run `npm run setup` again afterward to set its secret and password — your
   data is untouched, since it's still the same database.
@@ -190,7 +187,7 @@ worker/                 Cloudflare Worker — /api/{health,setup,auth,sync}
 migrations/             database schema migrations
 scripts/                setup.mjs, seed.mjs, reset-password.mjs, PWA icon generation
 test/                   Vitest (@cloudflare/vitest-pool-workers)
-wrangler.toml.example   tracked template — copied to your own, git-ignored wrangler.toml
+wrangler.toml           tracked, with placeholder resource ids — npm run setup fills in yours
 ```
 
 ## Security notes
@@ -207,9 +204,13 @@ wrangler.toml.example   tracked template — copied to your own, git-ignored wra
 
 ## Before sharing this repository
 
-- Confirm `.dev.vars` and `wrangler.toml` were never committed —
-  `git ls-files | grep -E 'dev\.vars$|^wrangler\.toml$'` should print nothing
-  (only the `.example` versions are meant to be tracked).
+- Confirm `.dev.vars` was never committed — `git ls-files | grep dev.vars`
+  should print nothing (only `.dev.vars.example` is meant to be tracked).
+- `wrangler.toml`'s `database_id` fields aren't secrets, but if you'd rather
+  not publish your own account's ids, reset them to `PASTE_..._HERE` before
+  pushing — nothing reads them except your own `wrangler` commands.
+- Only commit `[env.*]` blocks you actually want to share. A personal test
+  sandbox (e.g. `[env.demo-2]`) is fine to keep local and uncommitted.
 - Confirm `scripts/seed.mjs`'s default password is still the generic
   placeholder, not a real one you use anywhere.
 

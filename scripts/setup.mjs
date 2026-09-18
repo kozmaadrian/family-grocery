@@ -10,16 +10,16 @@
 // Any --env value works, as long as wrangler.toml already has a matching
 // [env.<name>] block (with its own [assets] / [[d1_databases]] / [[ratelimits]]
 // — environments don't inherit bindings from the top level). [env.demo] ships
-// in wrangler.toml.example; add your own blocks for anything else, e.g. a
-// personal [env.demo-2] test sandbox, by copying that block and renaming it.
+// with a placeholder database_id; add your own blocks for anything else, e.g.
+// a personal [env.demo-2] test sandbox, by copying that block and renaming
+// it — and if it's just for you, don't commit that block.
 //
-// wrangler.toml is git-ignored and per-owner (see wrangler.toml.example) —
-// this script creates your own local copy on first run and fills in your
-// real database id in place once it creates the database, so nothing you
-// edit here ever shows up as a change to commit. It never reads or stores
-// your real secrets, either — AUTH_SECRET / SETUP_KEY are generated locally
-// and piped straight into `wrangler secret put`, then discarded from this
-// process except for a one-time printout so you can save them yourself.
+// wrangler.toml is tracked with placeholder resource ids (Cloudflare's own
+// convention — ids aren't secrets); this script fills in your real one in
+// place once it creates the database. It never reads or stores your real
+// secrets, though — AUTH_SECRET / SETUP_KEY are generated locally and piped
+// straight into `wrangler secret put`, then discarded from this process
+// except for a one-time printout so you can save them yourself.
 
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -71,14 +71,8 @@ try {
   process.exit(1);
 }
 
-// --- Step 1: local config files (git-ignored — never committed, never shared) ---
-step(1, 'Local config files');
-if (!existsSync('wrangler.toml')) {
-  copyFileSync('wrangler.toml.example', 'wrangler.toml');
-  console.log('Created wrangler.toml from wrangler.toml.example.');
-} else {
-  console.log('wrangler.toml already exists — leaving it alone.');
-}
+// --- Step 1: local dev secrets (harmless, always local, never deployed) ----
+step(1, 'Local dev secrets (.dev.vars)');
 if (!existsSync('.dev.vars')) {
   if (await ask('Create .dev.vars from .dev.vars.example for local development?', { defaultNo: false })) {
     copyFileSync('.dev.vars.example', '.dev.vars');
