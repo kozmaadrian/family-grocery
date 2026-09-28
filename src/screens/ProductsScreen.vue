@@ -81,6 +81,7 @@ function openEdit(id: string) {
         <div class="group__items">
           <DraggableAisle
             :items="g.items"
+            :group="`arrange-${storeId}`"
             @reorder="reorderPlacements(storeId, g.key === 'unsorted' ? null : g.key, $event)"
             @toggle="(id, needed) => setNeeded(id, needed)"
             @open="openEdit($event)"

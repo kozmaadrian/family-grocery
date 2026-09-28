@@ -4,7 +4,7 @@ import { dragAndDrop } from '@formkit/drag-and-drop/vue';
 import type { ArrangeItem } from '@/lib/arrange';
 import CheckCircle from './CheckCircle.vue';
 
-const props = defineProps<{ items: ArrangeItem[] }>();
+const props = defineProps<{ items: ArrangeItem[]; group: string }>();
 const emit = defineEmits<{
   reorder: [productIds: string[]];
   toggle: [productId: string, needed: boolean];
@@ -14,10 +14,13 @@ const emit = defineEmits<{
 const parent = ref<HTMLElement>();
 const list = ref<ArrangeItem[]>([...props.items]);
 
+// Same `group` on every aisle in the store lets a card be picked up here and
+// dropped into a different aisle's list, moving it between categories.
 dragAndDrop<ArrangeItem>({
   parent,
   values: list,
   dragHandle: '.arr__grip',
+  group: props.group,
 });
 
 // signature covers order AND the fields a row shows, so an edit to a product's
@@ -38,9 +41,12 @@ watch(
 );
 
 watch(list, (l) => {
+  // Fires for a same-aisle reorder, and for either side of a cross-aisle move
+  // (the aisle a card left, and the one it landed in) — both need their new
+  // order persisted, even though only one actually changed length.
   const dragged = l.map((x) => x.product.id).join(',');
   const persisted = props.items.map((x) => x.product.id).join(',');
-  if (dragged !== persisted && l.length === props.items.length) {
+  if (dragged !== persisted) {
     emit(
       'reorder',
       l.map((x) => x.product.id),

@@ -258,7 +258,11 @@ export async function removePlacement(productId: string, storeId: string): Promi
   if (cur && !cur.deleted) await data().upsert('placements', { ...cur, deleted: 1 });
 }
 
-/** Renumber the placements of one aisle (areaId null = Unsorted) to match `orderedProductIds`. */
+/**
+ * Make one aisle (areaId null = Unsorted) contain exactly `orderedProductIds`, in that
+ * order — renumbering positions, and reassigning area_id for any product dragged in
+ * from a different aisle.
+ */
 export async function reorderPlacements(
   storeId: string,
   areaId: string | null,
@@ -268,8 +272,8 @@ export async function reorderPlacements(
   const refs: Ref[] = [];
   orderedProductIds.forEach((pid, i) => {
     const p = d.get('placements', placementId(pid, storeId));
-    if (p && !p.deleted && p.area_id === areaId && p.position !== i + 1) {
-      refs.push({ table: 'placements', row: { ...p, position: i + 1 } });
+    if (p && !p.deleted && (p.area_id !== areaId || p.position !== i + 1)) {
+      refs.push({ table: 'placements', row: { ...p, area_id: areaId, position: i + 1 } });
     }
   });
   if (refs.length) await commit(refs);
