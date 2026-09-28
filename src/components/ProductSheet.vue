@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import BottomSheet from './BottomSheet.vue';
+import PromptSheet from './PromptSheet.vue';
 import { useDataStore } from '@/stores/data';
 import {
   areasForStore,
+  createArea,
   createProduct,
   deleteProduct,
   placement,
@@ -13,6 +15,9 @@ import {
   updateProduct,
 } from '@/lib/domain';
 import { showToast } from '@/lib/toast';
+
+/** sentinel <option> value that opens the "new aisle" prompt instead of picking one */
+const NEW_AREA = '__new__';
 
 const props = defineProps<{
   open: boolean;
@@ -84,6 +89,7 @@ async function toggleStore(storeId: string) {
 }
 
 async function pickArea(storeId: string, areaId: string) {
+  if (areaId === NEW_AREA) return openNewAreaPrompt(storeId, false);
   if (!props.productId) return;
   await setPlacement(props.productId, storeId, areaId || null);
 }
@@ -94,7 +100,30 @@ function toggleNewStore(storeId: string) {
 }
 
 function pickNewArea(storeId: string, areaId: string) {
+  if (areaId === NEW_AREA) return openNewAreaPrompt(storeId, true);
   newPlacements.set(storeId, areaId || null);
+}
+
+/** "+ Add new aisle…" chosen from a store's aisle <select> — ask for a name, create it,
+ * then assign the product (or, while still creating a product, the pending placement) to it. */
+const newAreaPromptOpen = ref(false);
+const newAreaContext = ref<{ storeId: string; forNewProduct: boolean } | null>(null);
+
+function openNewAreaPrompt(storeId: string, forNewProduct: boolean) {
+  newAreaContext.value = { storeId, forNewProduct };
+  newAreaPromptOpen.value = true;
+}
+
+async function onCreateArea(name: string) {
+  const ctx = newAreaContext.value;
+  newAreaContext.value = null;
+  if (!ctx) return;
+  const areaId = await createArea(ctx.storeId, name);
+  if (ctx.forNewProduct) {
+    newPlacements.set(ctx.storeId, areaId);
+  } else if (props.productId) {
+    await setPlacement(props.productId, ctx.storeId, areaId);
+  }
 }
 
 const busy = ref(false);
@@ -176,6 +205,7 @@ async function remove() {
             <option v-for="a in areasForStore(s.id)" :key="a.id" :value="a.id">
               {{ a.name }}
             </option>
+            <option :value="NEW_AREA">+ Add new aisle…</option>
           </select>
         </div>
       </section>
@@ -206,6 +236,7 @@ async function remove() {
             <option v-for="a in areasForStore(s.id)" :key="a.id" :value="a.id">
               {{ a.name }}
             </option>
+            <option :value="NEW_AREA">+ Add new aisle…</option>
           </select>
         </div>
       </section>
@@ -213,6 +244,16 @@ async function remove() {
       <button class="btn-danger" @click="remove">Delete product</button>
     </template>
   </BottomSheet>
+
+  <PromptSheet
+    :open="newAreaPromptOpen"
+    title="New aisle"
+    label="Aisle name"
+    placeholder="e.g. Dairy"
+    submit-label="Add"
+    @update:open="newAreaPromptOpen = $event"
+    @submit="onCreateArea"
+  />
 </template>
 
 <style scoped>
