@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Family Grocery Guide</title>
+<meta name="description" content="How to use Family Grocery: every screen, badge, and gesture, explained." />
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<script>
+  // Match whatever theme is set in the app itself (same origin, same localStorage
+  // key) — "system" (no attribute) falls through to prefers-color-scheme below.
+  try {
+    var t = localStorage.getItem('grocery:theme');
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
+<style>
+  :root {
+    --bg: #f4f5f6;
+    --surface: #ffffff;
+    --surface-2: #eceef0;
+    --border: #e2e4e7;
+    --hairline: rgba(20,25,28,.08);
+    --text: #16191c;
+    --text-dim: #5b6268;
+    --text-faint: #6b7075;
+    --accent: #0c6b62;
+    --accent-contrast: #ffffff;
+    --accent-soft: #d7ebe8;
+    --success: #15803d;
+    --danger: #c31d1d;
+    --danger-soft: #fbe3e3;
+    --warn: #b45309;
+    --warn-soft: #fef3e0;
+    --shadow: rgba(10,12,14,.10);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --display: 'Fraunces', Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1211;
+      --surface: #181c1b;
+      --surface-2: #222827;
+      --border: #2c3331;
+      --hairline: rgba(255,255,255,.08);
+      --text: #e8eae9;
+      --text-dim: #a3abaa;
+      --text-faint: #7c8583;
+      --accent: #2dd4bf;
+      --accent-contrast: #06201d;
+      --accent-soft: #123531;
+      --success: #4ade80;
+      --danger: #f87171;
+      --danger-soft: #3a1d1d;
+      --warn: #fbbf24;
+      --warn-soft: #3a2d0f;
+      --shadow: rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1211;
+    --surface: #181c1b;
+    --surface-2: #222827;
+    --border: #2c3331;
+    --hairline: rgba(255,255,255,.08);
+    --text: #e8eae9;
+    --text-dim: #a3abaa;
+    --text-faint: #7c8583;
+    --accent: #2dd4bf;
+    --accent-contrast: #06201d;
+    --accent-soft: #123531;
+    --success: #4ade80;
+    --danger: #f87171;
+    --danger-soft: #3a1d1d;
+    --warn: #fbbf24;
+    --warn-soft: #3a2d0f;
+    --shadow: rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 760px; margin: 0 auto; padding: 0 20px 96px;
+    /* .topbar is position:fixed now, so it's out of flow — reserve the space
+       it actually occupies here instead. */
+    padding-top: calc(68px + env(safe-area-inset-top, 0px));
+  }
+
+  /* ---- top bar / nav ---- */
+  .topbar {
+    /* position: fixed, not sticky — sticky is known to ghost/duplicate-paint
+       in iOS WKWebView (installed PWA) during scroll: a stale frame of the
+       bar lingers above the current one. Fixed is one stable layer, no
+       scroll-triggered position transition, so there's nothing to glitch. */
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    padding-top: env(safe-area-inset-top, 0px);
+    background: var(--bg);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .topbar__inner {
+    max-width: 760px; margin: 0 auto; padding: 14px 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .topbar__title {
+    font-family: var(--display); font-weight: 600; font-size: 18px;
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .topbar__back {
+    /* The guide opens in the same tab (no target="_blank"), so there's no
+       browser-chrome back control to rely on either in a normal tab or in
+       the installed, standalone PWA — always show our own. */
+    flex: none; display: flex; align-items: center; gap: 6px;
+    margin-right: 4px; padding: 6px 10px 6px 6px; border-radius: 999px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px; font-weight: 600;
+    background: var(--surface-2);
+  }
+  .topbar__back svg { flex: none; }
+  .menu-btn {
+    flex: none; margin-left: auto; width: 38px; height: 38px; padding: 0;
+    border: none; border-radius: 999px; background: var(--surface-2);
+    color: var(--text); display: grid; place-items: center; cursor: pointer;
+  }
+  .menu-btn svg .l2 { transition: opacity .12s var(--ease, ease); }
+  .menu-btn[aria-expanded="true"] svg .l1 { transform: translateY(5px) rotate(45deg); }
+  .menu-btn[aria-expanded="true"] svg .l2 { opacity: 0; }
+  .menu-btn[aria-expanded="true"] svg .l3 { transform: translateY(-5px) rotate(-45deg); }
+  .menu-btn svg line { transition: transform .16s ease, opacity .12s ease; transform-origin: center; }
+
+  .nav {
+    display: none; flex-direction: column; gap: 4px; padding: 8px 12px 14px;
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 21;
+    max-width: 760px; margin: 0 auto; box-sizing: border-box;
+    max-height: calc(100vh - 60px); overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--hairline); border-top: none;
+    box-shadow: 0 14px 28px var(--shadow);
+  }
+  .nav.is-open { display: flex; }
+  .nav a {
+    display: flex; align-items: center;
+    min-height: 44px; padding: 0 12px; border-radius: 10px;
+    font-size: 15px; font-weight: 600;
+    color: var(--text-dim); text-decoration: none;
+  }
+  .nav a:hover, .nav a:active { color: var(--text); background: var(--surface-2); }
+
+  /* ---- hero ---- */
+  .hero { padding: 20px 0 8px; }
+  .hero__eyebrow {
+    font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 10px;
+  }
+  h1.hero__title {
+    font-family: var(--display); font-weight: 600; font-size: clamp(32px, 6vw, 44px);
+    line-height: 1.08; margin: 0 0 14px; text-wrap: balance; letter-spacing: -.01em;
+  }
+  .hero__lede { font-size: 17px; color: var(--text-dim); max-width: 56ch; margin: 0; }
+
+  /* ---- sections ---- */
+  section.sec { padding: 44px 0; border-top: 1px solid var(--hairline); scroll-margin-top: 96px; }
+  section.sec:first-of-type { border-top: none; }
+  .sec__kicker { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; }
+  .sec__num {
+    font-family: var(--mono); font-size: 13px; color: var(--text-faint);
+  }
+  h2 {
+    font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0 0 6px;
+    letter-spacing: -.01em;
+  }
+  .sec__intro { color: var(--text-dim); margin: 0 0 24px; max-width: 62ch; }
+  h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; }
+  p { margin: 0 0 12px; }
+
+  /* ---- mockup card ---- */
+  .mock {
+    display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: 24px;
+    align-items: start; margin: 8px 0 20px;
+  }
+  @media (max-width: 620px) { .mock { grid-template-columns: 1fr; } }
+  .mock__frame {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 22px;
+    padding: 8px; box-shadow: 0 6px 24px var(--shadow);
+  }
+  .mock__frame svg, .mock__frame img { display: block; width: 100%; height: auto; border-radius: 16px; }
+  .mock__caption { margin: 8px 2px 0; font-size: 12px; color: var(--text-faint); text-align: center; }
+  .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .legend li { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; }
+  .legend .badge {
+    flex: none; width: 20px; height: 20px; border-radius: 999px; background: var(--accent);
+    color: var(--accent-contrast); font-family: var(--mono); font-size: 12px; font-weight: 700;
+    display: grid; place-items: center; margin-top: 1px;
+  }
+  .legend b { display: block; }
+  .legend span.d { color: var(--text-dim); }
+  .icon-add, .icon-remove {
+    display: inline-flex; vertical-align: -6px; width: 22px; height: 22px;
+    border-radius: 999px; border: 2px solid; margin: 0 2px; flex: none;
+  }
+  .icon-add svg, .icon-remove svg { width: 100%; height: 100%; }
+  .icon-add { border-color: var(--accent); color: var(--accent); background: var(--surface); }
+  .icon-remove { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+
+  /* ---- action / info tables ---- */
+  .rows { display: flex; flex-direction: column; border-top: 1px solid var(--hairline); margin: 18px 0; }
+  .row {
+    display: grid; grid-template-columns: 180px 1fr; gap: 16px; padding: 13px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; gap: 4px; } }
+  .row__what { font-weight: 700; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+  .row__icon { flex: none; width: 20px; height: 20px; color: var(--accent); }
+  .row__how { color: var(--text-dim); font-size: 14.5px; }
+  .row__how code { background: var(--surface-2); padding: 1px 6px; border-radius: 5px; font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+
+  /* ---- badges reference ---- */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 18px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px 5px 8px;
+    border-radius: 999px; background: var(--surface-2); font-size: 13px; font-weight: 600;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 999px; flex: none; }
+  .dot--accent { background: var(--accent); }
+  .dot--success { background: var(--success); }
+  .dot--danger { background: var(--danger); }
+  .dot--faint { background: var(--text-faint); }
+
+  /* ---- callouts ---- */
+  .codeblock { margin: 10px 0; padding: 12px 14px; background: var(--surface-2); border-radius: 10px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .tip, .warn {
+    border-radius: 12px; padding: 14px 16px; margin: 18px 0; font-size: 14.5px;
+    display: flex; gap: 10px;
+  }
+  .tip { background: var(--accent-soft); }
+  .warn { background: var(--warn-soft); }
+  .tip__icon, .warn__icon { flex: none; font-size: 15px; line-height: 1.4; }
+  .tip b, .warn b { display: block; margin-bottom: 2px; }
+
+  /* faq */
+  .faq { border-top: 1px solid var(--hairline); }
+  .faq details { border-bottom: 1px solid var(--hairline); padding: 14px 0; }
+  .faq summary {
+    cursor: pointer; font-weight: 700; font-size: 15px; list-style: none;
+    display: flex; justify-content: space-between; gap: 12px; align-items: center;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: '+'; color: var(--text-faint); font-weight: 400; font-size: 20px; flex: none; }
+  .faq details[open] summary::after { content: '–'; }
+  .faq p { color: var(--text-dim); margin: 10px 0 0; font-size: 14.5px; }
+
+  footer { padding: 40px 0 10px; color: var(--text-faint); font-size: 13px; border-top: 1px solid var(--hairline); margin-top: 20px; }
+
+  @media print {
+    body { font-size: 13.5px; }
+    .topbar { position: static; backdrop-filter: none; }
+    .nav { display: none; }
+    .mock, .legend li, .rows .row, .tip, .warn, .faq details, .codeblock { break-inside: avoid; }
+    h2, h3, .sec__kicker { break-after: avoid; }
+    .hero { padding: 10px 0 2px; }
+    h1.hero__title { font-size: 28px; }
+    .hero__lede { font-size: 14.5px; }
+    section.sec { padding: 20px 0; }
+    h2 { font-size: 20px; }
+    h3 { margin: 16px 0 8px; }
+    .sec__intro { margin-bottom: 14px; }
+    .mock { grid-template-columns: 180px 1fr; gap: 16px; margin: 4px 0 12px; }
+    .mock__frame { max-width: 180px; padding: 6px; }
+    .legend { gap: 6px; }
+    .legend li { font-size: 12.5px; }
+    .row { padding: 8px 0; }
+    .tip, .warn { padding: 10px 12px; margin: 10px 0; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar__inner">
+    <a class="topbar__back" href="/settings" aria-label="Back to Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      Back
+    </a>
+    <div class="topbar__title">Guide</div>
+    <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="navMenu">
+      <svg width="18" height="18" viewBox="0 0 24 24"><line class="l1" x1="4" y1="7" x2="20" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line class="l2" x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line class="l3" x1="4" y1="17" x2="20" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <nav class="nav" id="navMenu">
+    <a href="#start">Getting started</a>
+    <a href="#tabs">The 4 tabs</a>
+    <a href="#shop">Shop</a>
+    <a href="#products">Products</a>
+    <a href="#stores">Stores</a>
+    <a href="#settings">Settings</a>
+    <a href="#tips">Tips & gestures</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+</div>
+<script>
+  (function () {
+    var btn = document.getElementById('menuBtn');
+    var nav = document.getElementById('navMenu');
+    function close() {
+      nav.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    btn.addEventListener('click', function () {
+      var open = nav.classList.toggle('is-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    nav.addEventListener('click', function (e) {
+      if (e.target.tagName === 'A') close();
+    });
+  })();
+</script>
+
+<div class="wrap">
+
+  <div class="hero">
+    <p class="hero__eyebrow">User guide</p>
+    <h1 class="hero__title">Shop the way you actually walk the store.</h1>
+    <p class="hero__lede">Family Grocery keeps one shared list, sorted into the order you'd walk each store's aisles — so nothing sends you back to produce after you've already reached the checkout. This guide covers every screen, every icon, and what each badge on screen actually means.</p>
+  </div>
+
+  <!-- ================= GETTING STARTED ================= -->
+  <section class="sec" id="start">
+    <div class="sec__kicker"><span class="sec__num">01</span></div>
+    <h2>Getting started</h2>
+    <p class="sec__intro">There's no sign-up. One shared password unlocks the whole household's list.</p>
+
+    <div class="mock">
+      <div class="mock__frame">
+        <img src="img/login.png" alt="Family Grocery login screen: app mark, title, password field with Show toggle, and an Unlock button" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Password field</b><span class="d">Tap "Show" to reveal what you typed — useful on a shared/awkward keyboard.</span></div></li>
+        <li><span class="badge">2</span><div><b>Unlock / Create</b><span class="d">If a password already exists for this household, this button says "Unlock." If nobody has set one yet, the whole screen instead reads "Choose a family password" and this button says "Create" — whoever does that first sets it for everyone.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip"><span class="tip__icon">💡</span><div><b>Only set it once.</b> Once a password exists, it can't be re-created this way — a family member who forgets it needs whoever manages the deployment to reset it for them.</div></div>
+
+    <h3>After you unlock</h3>
+    <p>You land on <b>Shop</b>. The app now works from data stored on your device — closing the browser, losing signal, or going offline doesn't lose anything. Add it to your Home Screen for the full app-like feel (see <a href="#settings">Settings</a>), or just keep using it as a normal browser tab — both work identically.</p>
+  </section>
+
+  <!-- ================= 4 TABS ================= -->
+  <section class="sec" id="tabs">
+    <div class="sec__kicker"><span class="sec__num">02</span></div>
+    <h2>The four tabs</h2>
+    <p class="sec__intro">Everything lives behind four tabs, always reachable at the bottom of the screen.</p>
+    <div class="rows">
+      <div class="row">
+        <div class="row__what">
+          <svg class="row__icon" viewBox="0 -4 56.823 64.823" aria-hidden="true"><g fill="currentColor" fill-rule="evenodd"><path d="M36.272,25.308c0.106,0.036,0.215,0.053,0.321,0.053c0.417,0,0.806-0.262,0.947-0.679c0.313-0.918,1.314-1.411,2.232-1.1 c1.962,0.664,4.103-0.389,4.768-2.352c0.178-0.522-0.102-1.091-0.625-1.269c-0.525-0.177-1.091,0.103-1.269,0.626 c-0.312,0.919-1.313,1.412-2.232,1.1c-1.959-0.661-4.102,0.39-4.768,2.352C35.469,24.561,35.749,25.13,36.272,25.308z"/><path d="M38.638,18.34c0.106,0.036,0.215,0.053,0.321,0.053c0.417,0,0.806-0.262,0.947-0.679c0.151-0.445,0.466-0.805,0.888-1.013 s0.899-0.238,1.344-0.087c1.962,0.664,4.102-0.389,4.768-2.353c0.178-0.522-0.103-1.091-0.625-1.269 c-0.523-0.18-1.091,0.103-1.268,0.626c-0.312,0.92-1.311,1.413-2.232,1.101c-0.952-0.323-1.971-0.257-2.871,0.188 c-0.9,0.444-1.574,1.213-1.897,2.164C37.834,17.594,38.115,18.162,38.638,18.34z"/><path d="M41.002,11.372c0.107,0.036,0.215,0.053,0.322,0.053c0.417,0,0.806-0.262,0.947-0.679c0.23-0.678,0.971-1.043,1.648-0.813 c0.835,0.283,1.73,0.225,2.521-0.164c0.79-0.39,1.381-1.064,1.665-1.899c0.178-0.522-0.102-1.091-0.625-1.269 c-0.525-0.179-1.091,0.103-1.269,0.626c-0.112,0.329-0.345,0.595-0.656,0.748c-0.311,0.153-0.663,0.176-0.993,0.063 c-1.722-0.581-3.601,0.343-4.185,2.064C40.2,10.626,40.479,11.194,41.002,11.372z"/><path d="M48.246,25.234c-0.174-0.119-0.37-0.187-0.57-0.213c1.987-6.457,3.077-12.783,3.233-18.808 c0.049-1.895-0.877-4.425-2.744-5.596c-0.896-0.563-2.364-1.027-4.27-0.046c-2.987,1.541-5.123,6.074-6.839,9.718 c-0.099,0.21-0.196,0.415-0.292,0.618c-0.379-1.743-1.531-3.234-3.169-4.012c-0.386-1.856-1.858-3.31-3.708-3.687 c-0.02-0.104-0.045-0.206-0.076-0.309c-0.381-1.302-1.53-2.282-2.859-2.44c-0.749-0.089-1.491,0.066-2.125,0.437 c-0.54-0.301-1.146-0.461-1.768-0.461c-1.739,0-3.2,1.213-3.581,2.836c-1.901,0.518-3.295,2.263-3.31,4.291 c-2.169,0.56-3.749,2.52-3.749,4.851c0,0.618,0.116,1.23,0.339,1.807c-0.563,0.695-0.875,1.565-0.875,2.478 c0,0.548,0.113,1.076,0.326,1.564c-0.999-1.09-2.405-1.981-3.984-1.923c-0.552,0.018-0.986,0.479-0.969,1.031 c0.017,0.541,0.461,0.969,0.999,0.969c0.034,0.001,0.065-0.002,0.097-0.002c0.937,0,1.808,0.62,2.442,1.34 c-1.586,0.457-3.498,1.201-4.39,2.883c-0.537,1.015-0.6,2.26-0.242,3.686c-0.173,0.289-0.268,0.625-0.25,0.983l1.702,24.187 c0.155,3.033,2.655,5.408,5.691,5.408h28.071c3.036,0,5.536-2.375,5.69-5.39l1.745-25.028c0-0.006,0.001-0.012,0.001-0.018 C48.84,25.927,48.627,25.496,48.246,25.234z M37.58,13.767c0.396-0.739,0.828-1.655,1.285-2.626 c1.503-3.192,3.563-7.563,5.946-8.793C45.681,1.9,46.43,1.891,47.102,2.31c1.159,0.728,1.841,2.565,1.808,3.851 c-0.153,5.912-1.233,12.134-3.211,18.494c-0.065,0.209-0.209,0.631-0.414,1.21l-1.704,0.757c-0.037,0.017-0.073,0.035-0.108,0.057 c-0.492,0.295-1.044,0.441-1.596,0.447c-0.552-0.006-1.103-0.152-1.595-0.447l-0.713-0.428c-0.82-0.492-1.739-0.738-2.658-0.738 c-0.011,0-0.022,0.002-0.034,0.002c-0.93-0.006-1.862,0.237-2.692,0.736l-0.712,0.428c-0.397,0.238-0.836,0.354-1.28,0.404 c0.025-0.087,0.054-0.172,0.08-0.258c0.274-0.931,0.568-1.849,0.876-2.76c0.117-0.346,0.239-0.69,0.361-1.033 c0.257-0.723,0.526-1.437,0.804-2.146c0.124-0.317,0.245-0.637,0.373-0.951C35.559,17.808,36.521,15.745,37.58,13.767z M24.832,16.139c0.117-0.15,0.231-0.296,0.339-0.438c0-0.002,0.001-0.003,0.002-0.004c0.079-0.105,0.148-0.214,0.206-0.323 c0.246-0.463,0.304-0.983,0.19-1.491l4.174-0.913c0.028,0.128,0.058,0.255,0.106,0.373c0.187,0.458,0.521,0.839,0.986,1.105 c0.152,0.084,0.311,0.168,0.475,0.255c0.135,0.071,0.27,0.145,0.406,0.219c0.065,0.035,0.131,0.07,0.196,0.106 c0.119,0.067,0.234,0.141,0.35,0.214c0.099,0.061,0.197,0.124,0.293,0.191c0.111,0.077,0.217,0.162,0.323,0.248 c0.093,0.076,0.182,0.159,0.27,0.244c0.095,0.093,0.189,0.188,0.276,0.292c0.154,0.184,0.302,0.375,0.423,0.604 c-0.424,0.936-0.823,1.891-1.209,2.854c-0.06,0.149-0.124,0.294-0.183,0.443c-1.096,0.278-2.155,0.798-3.463,1.729 c-1.648,1.171-2.875,1.482-4.897,1.189l-0.607-2.779C23.076,18.378,23.969,17.24,24.832,16.139z M29.791,10.066 c0.026-0.005,0.052-0.008,0.078-0.008c0.189,0,0.366,0.135,0.407,0.325c0.032,0.144-0.022,0.257-0.058,0.312 c-0.035,0.054-0.114,0.149-0.257,0.18l-5.524,1.209c-0.22,0.048-0.444-0.098-0.492-0.316c-0.048-0.219,0.097-0.444,0.316-0.492 l2.935-0.642L29.791,10.066z M26.559,25.533c-0.076,0.005-0.153,0.007-0.229,0.015c-0.545,0.055-1.083,0.193-1.594,0.423 l-0.191-0.875c0.288,0.024,0.575,0.048,0.844,0.048c1.744,0,3.148-0.519,4.762-1.667c0.508-0.362,0.958-0.636,1.386-0.863 c-0.092,0.261-0.183,0.521-0.272,0.783c-0.064,0.188-0.133,0.373-0.195,0.562c-0.294,0.89-0.574,1.787-0.835,2.692l-0.665-0.398 c-0.82-0.492-1.739-0.738-2.658-0.738c-0.012,0-0.025,0.002-0.037,0.002C26.769,25.515,26.664,25.527,26.559,25.533z M14.598,15.192l0.655-0.54l-0.425-0.733c-0.266-0.46-0.407-0.98-0.407-1.506c0-1.62,1.269-2.941,2.889-3.009l1.214-0.051 l-0.283-1.182c-0.048-0.198-0.072-0.393-0.072-0.578c0-1.288,1.006-2.373,2.29-2.471l0.924-0.07l0-0.995 c0.029-0.899,0.77-1.622,1.677-1.622c0.522,0,0.896,0.238,1.117,0.438l0.701,0.633l0.672-0.664 c0.308-0.304,0.731-0.446,1.167-0.396c0.536,0.063,1.02,0.481,1.176,1.018c0.053,0.18,0.068,0.354,0.047,0.531l-0.117,1.117h1.126 c1.437,0,2.639,1.123,2.738,2.557l0.045,0.657l0.621,0.218c1.563,0.549,2.591,2.028,2.556,3.683 c-0.015,0.707-0.243,1.388-0.656,1.985c-0.669-0.568-1.39-0.951-1.996-1.27c-0.157-0.083-0.309-0.163-0.462-0.248 c-0.043-0.024-0.095-0.066-0.113-0.171c-0.024-0.144,0.03-0.317,0.139-0.444c0.436-0.506,0.611-1.196,0.47-1.847l-0.121-0.551 c-0.121-0.556-0.453-1.031-0.933-1.339c-0.479-0.307-1.049-0.41-1.604-0.288l-0.268,0.059c-0.003,0.001-0.006,0-0.009,0.001 l-2.935,0.642l-2.864,0.625c-0.555,0.121-1.03,0.452-1.338,0.933c-0.308,0.479-0.41,1.05-0.289,1.605l0.06,0.272 c0,0.001,0,0.002,0,0.003c0,0.001,0.001,0.002,0.001,0.004l0.059,0.271c0.145,0.666,0.608,1.227,1.237,1.497 c0.156,0.067,0.286,0.194,0.331,0.323c0.026,0.074,0.011,0.112-0.047,0.208c0,0,0,0,0,0.001c-0.099,0.133-0.206,0.268-0.315,0.407 c-0.11,0.14-0.224,0.287-0.34,0.439c-0.039,0.051-0.076,0.104-0.115,0.156c-0.083,0.113-0.166,0.228-0.248,0.348 c-0.045,0.065-0.088,0.132-0.132,0.2c-0.076,0.117-0.149,0.238-0.221,0.362c-0.042,0.072-0.083,0.143-0.123,0.218 c-0.075,0.14-0.143,0.287-0.21,0.437c-0.029,0.064-0.06,0.125-0.086,0.192c-0.088,0.218-0.166,0.446-0.228,0.686 c-0.01,0.038-0.014,0.079-0.023,0.118c-0.048,0.204-0.087,0.415-0.112,0.635c-0.01,0.088-0.012,0.18-0.018,0.271 c-0.008,0.118-0.023,0.23-0.023,0.353c-0.004-0.005-0.008-0.01-0.012-0.015c-0.014-0.018-0.028-0.034-0.041-0.052 c-0.174-0.229-0.348-0.44-0.523-0.64c-0.055-0.063-0.111-0.124-0.167-0.184c-0.147-0.159-0.294-0.308-0.442-0.448 c-0.048-0.045-0.096-0.094-0.145-0.138c-0.187-0.167-0.375-0.32-0.564-0.456c-0.053-0.038-0.107-0.07-0.16-0.106 c-0.142-0.095-0.284-0.183-0.428-0.261c-0.07-0.038-0.139-0.075-0.21-0.109c-0.149-0.073-0.299-0.135-0.45-0.189 c-0.05-0.018-0.1-0.042-0.15-0.058c-0.164-0.052-0.329-0.094-0.495-0.125c-0.019-0.004-0.038-0.002-0.057-0.005 c-0.034-0.006-0.067-0.019-0.101-0.024c-0.116-0.017-0.226-0.01-0.34-0.018c-0.08-0.005-0.159-0.022-0.239-0.022 c-0.024,0-0.049,0.006-0.074,0.006c-0.155,0.002-0.305,0.02-0.456,0.039c-0.075,0.01-0.15,0.016-0.225,0.03 c-0.197,0.036-0.388,0.086-0.577,0.146c-0.029,0.009-0.057,0.016-0.086,0.026c-0.498,0.169-0.97,0.408-1.412,0.697 c-0.091-0.225-0.139-0.467-0.139-0.716C13.885,16.113,14.145,15.564,14.598,15.192z M8.173,23.495 c0.423-0.797,1.45-1.405,3.233-1.915c0.834-0.238,1.608-0.683,2.236-1.283c0.285-0.273,0.552-0.504,0.81-0.714 c0.806-0.655,1.501-1.011,2.13-1.092c0.014-0.002,0.028-0.004,0.042-0.005c0.199-0.022,0.392-0.016,0.579,0.017 c0.049,0.009,0.099,0.026,0.149,0.039c0.093,0.023,0.185,0.046,0.278,0.083c0.06,0.023,0.12,0.058,0.181,0.086 c0.087,0.042,0.173,0.08,0.26,0.133c0.068,0.041,0.136,0.094,0.204,0.141c0.081,0.057,0.162,0.109,0.244,0.175 c0.076,0.061,0.152,0.135,0.228,0.204c0.076,0.069,0.152,0.132,0.228,0.209c0.084,0.085,0.169,0.184,0.254,0.279 c0.069,0.077,0.138,0.148,0.208,0.231c0.095,0.114,0.191,0.244,0.287,0.37c0.061,0.08,0.121,0.152,0.182,0.237 c0.109,0.152,0.219,0.321,0.329,0.489c0.048,0.074,0.097,0.14,0.145,0.216c0.159,0.251,0.319,0.518,0.48,0.802 c0.736,1.299,0.98,3.218,0.66,4.889c-0.053-0.005-0.105-0.013-0.158-0.021c-0.381-0.065-0.748-0.187-1.082-0.387l-0.713-0.428 c-0.82-0.492-1.739-0.738-2.658-0.738c-0.011,0-0.022,0.002-0.034,0.002c-0.93-0.006-1.862,0.237-2.692,0.736l-0.347,0.208 c-0.605,0.363-1.283,0.546-1.961,0.552c-0.679-0.006-1.356-0.188-1.961-0.552l-1.345-0.808c0,0-0.001,0-0.001-0.001 c-0.177-0.105-0.368-0.177-0.564-0.213C7.847,24.645,7.903,24.005,8.173,23.495z M45.074,51.313 c-0.101,1.968-1.724,3.51-3.694,3.51H13.308c-1.971,0-3.593-1.542-3.695-3.529L7.949,27.652l0.87,0.522 c0.943,0.566,2.002,0.844,3.058,0.838c1.057,0.006,2.115-0.272,3.058-0.838l0.347-0.208c0.492-0.296,1.043-0.442,1.595-0.448 c0.552,0.006,1.103,0.152,1.596,0.448l0.713,0.428c0.902,0.541,1.924,0.773,2.934,0.718c0.09-0.004,0.18-0.004,0.271-0.012 c0.011-0.001,0.021-0.007,0.033-0.008c0.683-0.077,1.353-0.292,1.971-0.644c0.058-0.021,0.12-0.022,0.174-0.054l0.713-0.428 c0.492-0.296,1.043-0.442,1.595-0.448c0.552,0.006,1.103,0.152,1.596,0.448l0.713,0.428c0.757,0.453,1.599,0.688,2.446,0.723 c0.017,0.001,0.035,0.003,0.052,0.003c0.292,0.009,0.584,0,0.874-0.041c0.166-0.021,0.327-0.063,0.49-0.1 c0.079-0.019,0.158-0.036,0.236-0.059c0.444-0.123,0.879-0.284,1.284-0.527h0l0.713-0.428c0.492-0.296,1.043-0.442,1.595-0.448 c0.552,0.006,1.103,0.152,1.596,0.448l0.713,0.428c0.826,0.495,1.753,0.738,2.679,0.734c0.015,0,0.031,0.003,0.046,0.003 c0.898,0,1.797-0.234,2.603-0.704l1.962-0.872c0.042-0.019,0.072-0.055,0.111-0.079l0.153-0.068L45.074,51.313z"/><path d="M11.911,43.004h7c0.552,0,1-0.447,1-1s-0.448-1-1-1h-7c-0.552,0-1,0.447-1,1S11.359,43.004,11.911,43.004z"/><path d="M11.911,47.004h9c0.552,0,1-0.447,1-1s-0.448-1-1-1h-9c-0.552,0-1,0.447-1,1S11.359,47.004,11.911,47.004z"/><path d="M22.911,49.004h-11c-0.552,0-1,0.447-1,1s0.448,1,1,1h11c0.552,0,1-0.447,1-1S23.463,49.004,22.911,49.004z"/><path d="M28.911,49.004h-2c-0.552,0-1,0.447-1,1s0.448,1,1,1h2c0.552,0,1-0.447,1-1S29.463,49.004,28.911,49.004z"/></g></svg>
+          Shop
+        </div>
+        <div class="row__how">Today's checklist — what's left to buy, grouped and ordered by aisle for whichever store you pick.</div>
+      </div>
+      <div class="row">
+        <div class="row__what">
+          <svg class="row__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></svg>
+          Products
+        </div>
+        <div class="row__how">Your master catalog — everything you've ever bought or might buy. Tick items on here to put them on the Shop list.</div>
+      </div>
+      <div class="row">
+        <div class="row__what">
+          <svg class="row__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9 5.5 4h13L20 9M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M4 9h16M9 20v-5h6v5" /></svg>
+          Stores
+        </div>
+        <div class="row__how">The shops you visit, and the walking order of their aisles — drag to arrange.</div>
+      </div>
+      <div class="row">
+        <div class="row__what">
+          <svg class="row__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.22.65.22 1v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+          Settings
+        </div>
+        <div class="row__how">Password, sync, theme, catalog import/export, and app updates. It's the 4th tab, on the far right — not a separate header icon.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SHOP ================= -->
+  <section class="sec" id="shop">
+    <div class="sec__kicker"><span class="sec__num">03</span></div>
+    <h2>Shop</h2>
+    <p class="sec__intro">This is the screen you actually use standing in the aisle. Nothing here is for adding items — that happens on Products. Shop is purely the ordered checklist.</p>
+
+    <div class="mock">
+      <div class="mock__frame">
+        <img src="img/shop-lidl.png" alt="Shop screen with Lidl selected: items grouped by aisle (Produce, Bakery, Meat & Fish, Dairy & Eggs, Pantry), each with a check circle" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Store picker</b><span class="d">Shows "7/10" — of the 10 items on your whole list, 7 are sold at Lidl. Tap it to switch stores or jump to "Any store" (everything, grouped by store instead of aisle).</span></div></li>
+        <li><span class="badge">2</span><div><b>Progress bar + Finish</b><span class="d">"0 of 7 in cart," filling in as you check items off. <code>Finish</code> ends the trip.</span></div></li>
+        <li><span class="badge">3</span><div><b>Aisle groups</b><span class="d">Produce, Bakery, Meat &amp; Fish, Dairy &amp; Eggs, Pantry… — in the exact walking order set on the Stores tab. The <code>×1</code> / <code>×2</code> after each name is how many items are in that group.</span></div></li>
+        <li><span class="badge">4</span><div><b>Check circle</b><span class="d">Tap to mark an item in-cart — it fills, strikes through, then slides out of view.</span></div></li>
+      </ul>
+    </div>
+    <div class="mock" style="margin-top:28px;">
+      <div class="mock__frame">
+        <img src="img/shop-picker-open.png" alt="Store picker popover open on Shop, showing Any store, Coop, Hieber, Lidl with a to-buy count for each" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>The store picker, open</b><span class="d">Tap the pill in the header to get here. "Any store" shows everything, grouped by store instead of aisle — a planning view, not what you'd use while actually walking one store. Each store also shows how many items on your list it covers.</span></div></li>
+      </ul>
+    </div>
+
+    <h3>Actions on an item row</h3>
+    <div class="rows">
+      <div class="row"><div class="row__what">Tap the circle</div><div class="row__how">Marks it in-cart. It briefly fills and strikes through, then (unless the eye toggle is on) slides out of view.</div></div>
+      <div class="row"><div class="row__what">Tap the circle again</div><div class="row__how">Only works while it's still visible (eye toggle on) — puts it back on the "to buy" list.</div></div>
+      <div class="row"><div class="row__what">Swipe left</div><div class="row__how">Reveals a red <code>Remove</code> action — removes it from today's list entirely (not from the catalog). Undo toast follows.</div></div>
+      <div class="row"><div class="row__what">Long-press (~0.5s)</div><div class="row__how">Opens the <b>item sheet</b>: edit this trip's quantity/note, move it to a different aisle at this store, or remove it from the list.</div></div>
+      <div class="row"><div class="row__what">Tap the row itself</div><div class="row__how">Same as long-press — opens the item sheet.</div></div>
+    </div>
+
+    <div class="mock">
+      <div class="mock__frame">
+        <img src="img/item-sheet.png" alt="Item sheet for Milk: Qty and Note fields, an Aisle at this store dropdown set to Dairy & Eggs, and a Remove from list button" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Qty / Note</b><span class="d">Overrides the catalog default for this trip only — e.g. "12" instead of the usual "6" this one time.</span></div></li>
+        <li><span class="badge">2</span><div><b>Aisle at this store</b><span class="d">Moves the item to a different aisle at the currently selected store, without opening the full Products sheet.</span></div></li>
+        <li><span class="badge">3</span><div><b>Remove from list</b><span class="d">Same as swiping the row — takes it off today's list, not the catalog.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip"><span class="tip__icon">💡</span><div><b>Pull down to refresh.</b> At the top of the list, pull down to force a sync with other devices right away, instead of waiting for it to happen automatically.</div></div>
+  </section>
+
+  <!-- ================= PRODUCTS ================= -->
+  <section class="sec" id="products">
+    <div class="sec__kicker"><span class="sec__num">04</span></div>
+    <h2>Products</h2>
+    <p class="sec__intro">Your master catalog. This is where you add new items, and where you decide which stores/aisles sell each one. This screen looks and behaves differently depending on whether a store is selected.</p>
+
+    <div class="mock">
+      <div class="mock__frame">
+        <img src="img/products-flat.png" alt="Products screen, All stores: flat alphabetical list, each row with a green plus or red minus circle" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Store picker</b><span class="d">On "All" (no store), you see the flat catalog, name-sorted. Pick a store and the screen switches to that store's items grouped by aisle — the same order they'll appear on Shop.</span></div></li>
+        <li><span class="badge">2</span><div><b>Search</b><span class="d">Filters by name or note as you type. Selecting a store while searching temporarily shows the flat list, so search always looks across everything.</span></div></li>
+        <li><span class="badge">3</span><div><b>Circle icon</b><span class="d">Tap the green <span class="icon-add" aria-hidden="true"><svg viewBox="-7 -7 38 38"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></span> to add a product to today's list; tap the red <span class="icon-remove" aria-hidden="true"><svg viewBox="-7 -7 38 38"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></span> to take it back off. Either way, this never touches the catalog entry itself, only whether it's currently "needed."</span></div></li>
+        <li><span class="badge">4</span><div><b>+ button (bottom right)</b><span class="d">Add a brand-new product to the catalog.</span></div></li>
+      </ul>
+    </div>
+
+    <h3>With a store selected: arranging aisles</h3>
+    <p>Products placed at that store appear grouped under their aisle name, in the order you'll walk them. <b>Drag any row by its grip</b> (the dots on the right) to reorder it within its aisle, or move it to a different aisle via the item's own sheet. This view is the one place that actually sets the walking order used on Shop.</p>
+
+    <div class="mock">
+      <div class="mock__frame">
+        <img src="img/products-lidl.png" alt="Products screen with Lidl selected: items grouped under aisle headings Produce, Bakery, Meat & Fish, with a drag handle on each row" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Aisle headings</b><span class="d">Produce, Bakery, Meat &amp; Fish… — plain labels here (no item count), matching the order set on Stores.</span></div></li>
+        <li><span class="badge">2</span><div><b>Drag handle</b><span class="d">The six dots on the right of each row — press and drag to reorder within the aisle.</span></div></li>
+      </ul>
+    </div>
+
+    <h3>Tap a row → Product sheet</h3>
+    <div class="mock">
+      <div class="mock__frame">
+        <img src="img/product-sheet.png" alt="Edit product sheet for Milk: Name, Qty, Note fields, and a Buy at list with a checkbox and aisle dropdown per store" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Name / Qty / Note</b><span class="d">The catalog defaults — e.g. always "semi-skimmed." They autosave as you type.</span></div></li>
+        <li><span class="badge">2</span><div><b>Buy at</b><span class="d">One checkbox per store. Tick it to place this product there; the dropdown beside it then assigns a specific aisle (or leave it <code>Unsorted</code>).</span></div></li>
+        <li><span class="badge">3</span><div><b>Delete product</b><span class="d">Removes it from the whole catalog — every store's placement and today's list, if it was on it. Undo toast follows.</span></div></li>
+      </ul>
+    </div>
+    <div class="tip"><span class="tip__icon">💡</span><div><b>Same product, different aisle per store.</b> "Milk" is in <i>Dairy &amp; Eggs</i> at Lidl and Coop, but just <i>Dairy</i> at Hieber — each store's placement is independent, which is exactly what makes the Shop screen's per-store ordering work.</div></div>
+  </section>
+
+  <!-- ================= STORES ================= -->
+  <section class="sec" id="stores">
+    <div class="sec__kicker"><span class="sec__num">05</span></div>
+    <h2>Stores</h2>
+    <p class="sec__intro">Add the shops you visit, then teach the app how you walk each one.</p>
+
+    <div class="mock">
+      <div class="mock__frame">
+        <img src="img/stores.png" alt="Stores list: Coop 8 aisles, Hieber 7 aisles, Lidl 8 aisles, each row with a pencil icon, and a plus button bottom right" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Tap a store</b><span class="d">Opens its Store screen — the pencil icon is just a visual hint that it's editable, tapping anywhere on the row works.</span></div></li>
+        <li><span class="badge">2</span><div><b>+ button</b><span class="d">Add a new store by name — you'll land straight in its Store screen to start adding aisles.</span></div></li>
+      </ul>
+    </div>
+
+    <h3>Inside a store: arranging the walk</h3>
+    <div class="mock">
+      <div class="mock__frame">
+        <img src="img/store-detail.png" alt="Lidl store screen: instructions to drag aisles into walking order, a draggable list of aisles (Produce, Bakery, Meat & Fish, Dairy & Eggs, Frozen, Pantry, Beverages, Household), an Add aisle button, and a Rename link" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Drag an aisle</b><span class="d">Reorders it. This order <i>is</i> the walking path Shop follows for this store — put them in the sequence you actually walk.</span></div></li>
+        <li><span class="badge">2</span><div><b>+ Add aisle</b><span class="d">Create a new zone, e.g. "Frozen" or "Checkout."</span></div></li>
+        <li><span class="badge">3</span><div><b>Rename (top right)</b><span class="d">Renames the store itself. Below the visible area: a Delete store button — removes its aisles and placements, but products stay in the catalog. Undo toast follows.</span></div></li>
+      </ul>
+    </div>
+    <p>Tap an aisle's <b>×</b> to delete it — its products fall back to "Unsorted" at this store rather than disappearing.</p>
+  </section>
+
+  <!-- ================= SETTINGS ================= -->
+  <section class="sec" id="settings">
+    <div class="sec__kicker"><span class="sec__num">06</span></div>
+    <h2>Settings</h2>
+    <p class="sec__intro">Reached via the 4th tab (gear icon). Grouped into sections, top to bottom:</p>
+
+    <div class="mock">
+      <div class="mock__frame">
+        <img src="img/settings-top.png" alt="Settings screen, top: Appearance theme switch, Sync status and Sync now button, Help User guide link, Updates Check for updates button" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Appearance</b><span class="d">System / Light / Dark, as a three-way switch.</span></div></li>
+        <li><span class="badge">2</span><div><b>Sync</b><span class="d">A colored dot + status text (here: "Synced just now"), and a manual <code>Sync now</code> button. See the badge meanings below.</span></div></li>
+        <li><span class="badge">3</span><div><b>Help</b><span class="d"><code>User guide</code> opens this very page.</span></div></li>
+        <li><span class="badge">4</span><div><b>Updates</b><span class="d">See below.</span></div></li>
+      </ul>
+    </div>
+    <div class="mock" style="margin-top:28px;">
+      <div class="mock__frame">
+        <img src="img/settings-bottom.png" alt="Settings screen, bottom: Catalog Import/Export, Sessions Sign-in log and Log out all devices, This device Sign out and Sign out & erase buttons" />
+      </div>
+      <ul class="legend">
+        <li><span class="badge">1</span><div><b>Catalog</b><span class="d"><code>Import</code> / <code>Export</code> — see "Catalog: import &amp; export" below.</span></div></li>
+        <li><span class="badge">2</span><div><b>Sessions</b><span class="d"><code>Sign-in log</code> shows recent unlock attempts; <code>Log out all devices</code> revokes every session at once — every device, this one included, needs the password again after.</span></div></li>
+        <li><span class="badge">3</span><div><b>This device</b><span class="d"><code>Sign out</code> keeps your local data; <code>Sign out &amp; erase</code> also wipes this device's copy (the shared data on the server is untouched).</span></div></li>
+      </ul>
+    </div>
+    <p>Not pictured: an <b>Install</b> section appears above Catalog, but only when your browser is ready to offer it — see the FAQ below.</p>
+
+    <h3>Sync status badges</h3>
+    <div class="chips">
+      <span class="chip"><span class="dot dot--success"></span>Idle / synced</span>
+      <span class="chip"><span class="dot dot--accent"></span>Syncing…</span>
+      <span class="chip"><span class="dot dot--faint"></span>Offline</span>
+      <span class="chip"><span class="dot dot--danger"></span>Sync error</span>
+    </div>
+    <p>The same colored dot also appears as a small pill in the header on Shop/Products/Stores whenever there's something worth flagging — synced and idle stays quiet, but "Syncing…," "Offline," or a pending-changes count shows up next to the gear icon.</p>
+
+    <h3>Checking for updates</h3>
+    <p><code>Check for updates</code> asks the server which version is live without reloading anything first, so you know before you commit to it:</p>
+    <div class="rows">
+      <div class="row"><div class="row__what">Already current</div><div class="row__how">A quick "You're on the latest version" message — nothing else happens.</div></div>
+      <div class="row"><div class="row__what">New version available</div><div class="row__how">The button itself turns into <code>New version available — tap to install</code>. Tapping it clears this device's cache and reloads, then confirms with "Updated ✓" once the new version is actually running.</div></div>
+    </div>
+    <p>The version string underneath (e.g. <code>4b3e315 · 2026-09-18 18:51</code>) is what's currently running on this device — the code revision and when it was built.</p>
+
+    <h3>Catalog: import &amp; export</h3>
+    <p><b>Settings → Catalog</b> has two buttons:</p>
+    <div class="rows">
+      <div class="row"><div class="row__what">Export</div><div class="row__how">Downloads the whole catalog — every store, aisle, and product — as one JSON file. Good for a backup, or as a starting point to hand to an AI assistant.</div></div>
+      <div class="row"><div class="row__what">Import</div><div class="row__how">Paste JSON back in, or a plain list of product names — one per line, optionally <code>name, qty, note</code>. Existing stores and products are matched by name, so importing twice doesn't create duplicates.</div></div>
+      <div class="row"><div class="row__what">Replace</div><div class="row__how">A checkbox in the Import sheet. Off merges the import into what's already there; on clears the current catalog first, so you start clean from exactly what you paste.</div></div>
+    </div>
+
+    <h3>Building a catalog with AI</h3>
+    <p>You don't have to type every product by hand — ChatGPT, Claude, or any AI assistant can write the import JSON for you. Give it a prompt like this:</p>
+    <pre class="codeblock">Write JSON matching exactly this shape, with no other text in your reply:
+
+{
+  "stores": [{ "name": "string", "aisles": ["string", "..."] }],
+  "products": [
+    {
+      "name": "string",
+      "qty": "string, optional",
+      "note": "string, optional",
+      "needed": true,
+      "stores": ["Store name", "Store name: Aisle name"]
+    }
+  ]
+}
+
+My stores and aisles: Lidl (Produce, Bakery, Dairy, Frozen), Costco (Dry
+goods, Fridge wall). Generate 25 common household grocery items, placed in
+the store and aisle where each is normally found. Mark milk, eggs, and bread
+as needed.</pre>
+    <div class="tip"><span class="tip__icon">💡</span><div><b>Export first, edit, re-import.</b> Exporting gives you real JSON in your own catalog's exact shape — handing that to the AI instead of a blank prompt makes it easy to ask for edits like "add 10 more snacks" or "add a Coop store with these aisles" while keeping everything else intact.</div></div>
+    <p>Paste the reply into <b>Settings → Catalog → Import</b> — with or without Replace, as above. Imports are capped at 2,000 items at a time.</p>
+  </section>
+
+  <!-- ================= TIPS ================= -->
+  <section class="sec" id="tips">
+    <div class="sec__kicker"><span class="sec__num">07</span></div>
+    <h2>Tips &amp; gestures, all in one place</h2>
+    <div class="rows">
+      <div class="row"><div class="row__what">Swipe left</div><div class="row__how">On a Shop row — removes that item from today's list (not the catalog). Undo toast follows.</div></div>
+      <div class="row"><div class="row__what">Long-press / tap row</div><div class="row__how">Opens the detail sheet for that item — quantity, note, aisle, or removal.</div></div>
+      <div class="row"><div class="row__what">Drag by the grip</div><div class="row__how">Reorders aisles (Stores) or products within an aisle (Products, store selected).</div></div>
+      <div class="row"><div class="row__what">Pull down at the top</div><div class="row__how">Forces an immediate sync on the Shop screen.</div></div>
+      <div class="row"><div class="row__what">Undo toast</div><div class="row__how">Appears after most removals/deletions/finishes — tap it before it fades to reverse the action.</div></div>
+      <div class="row"><div class="row__what">Everything syncs automatically</div><div class="row__how">Across every signed-in device, a few seconds after each change, or immediately when you reconnect after being offline.</div></div>
+    </div>
+  </section>
+
+  <!-- ================= FAQ ================= -->
+  <section class="sec" id="faq">
+    <div class="sec__kicker"><span class="sec__num">08</span></div>
+    <h2>Frequently asked</h2>
+    <div class="faq">
+      <details>
+        <summary>Why does "Add to Home Screen" only show up sometimes?</summary>
+        <p>Your browser has to confirm the app is installable before it offers the option, and that check sometimes only completes on a second load — reloading the page (or just revisiting it later) is usually all it takes for the option to appear in Settings.</p>
+      </details>
+      <details>
+        <summary>I marked something as bought — where did it go?</summary>
+        <p>It's hidden by design, so the list only shows what's left. Tap the eye icon in the status bar to bring bought items back into view, struck through, at the bottom of their aisle.</p>
+      </details>
+      <details>
+        <summary>Can the same product be needed differently for different trips?</summary>
+        <p>Yes — the item sheet on Shop lets you override the quantity or note just for this trip, without changing the catalog's default.</p>
+      </details>
+      <details>
+        <summary>What happens if I "Finish shopping" by accident?</summary>
+        <p>Nothing permanent right away — an 8-second Undo toast appears immediately after, restoring the exact list you had before.</p>
+      </details>
+      <details>
+        <summary>Does it work with no signal?</summary>
+        <p>Yes, fully. Every screen reads and writes to the device first; changes queue up and sync automatically the moment a connection comes back.</p>
+      </details>
+      <details>
+        <summary>Multiple people editing at once — what wins?</summary>
+        <p>The most recent change to a given item wins. Two people reordering the very same aisle at the same time while both offline can occasionally interleave oddly — reopening the app straightens it out automatically.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>Family Grocery — a small household tool. This guide describes the app as it stands; screens may evolve.</footer>
+</div>
+
+</body>
+</html>
