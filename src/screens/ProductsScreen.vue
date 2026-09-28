@@ -68,6 +68,17 @@ function openEdit(id: string) {
 
     <div class="search">
       <input v-model="query" class="input" type="search" placeholder="Search products" />
+      <button
+        v-if="query"
+        class="search__clear"
+        type="button"
+        aria-label="Clear search"
+        @click="query = ''"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
     </div>
 
     <!-- store selected: arrange that store's products by aisle -->
@@ -143,7 +154,35 @@ function openEdit(id: string) {
   z-index: 5;
 }
 .search .input {
+  position: relative;
   min-height: var(--control-h-sm);
+  padding-right: 40px;
+}
+.search .input::-webkit-search-cancel-button,
+.search .input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+.search__clear {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--s-4) + 8px);
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--c-text-faint);
+}
+.search__clear svg {
+  width: 100%;
+  height: 100%;
+  padding: 3px;
+}
+.search__clear:active {
+  color: var(--c-text-dim);
 }
 .list {
   padding: 0 var(--s-4);
