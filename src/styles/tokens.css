@@ -98,6 +98,11 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  scrollbar-width: none; /* Firefox */
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, WKWebView */
 }
 
 /* Installed iOS PWAs (viewport-fit=cover + a translucent status bar, both set
