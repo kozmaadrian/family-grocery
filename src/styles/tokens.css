@@ -214,6 +214,11 @@ textarea.input {
   padding: var(--s-3);
   line-height: 1.5;
 }
+/* The native arrow sits flush against the rounded corner without this —
+   give it room to breathe instead of replacing it with a custom one. */
+select.input {
+  padding-right: 30px;
+}
 .input:focus {
   outline: none;
   border-color: var(--c-accent);
