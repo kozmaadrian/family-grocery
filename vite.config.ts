@@ -29,6 +29,19 @@ export default defineConfig({
   },
   plugins: [
     vue(),
+    {
+      // A tiny, never-precached JSON file Settings' "Check for updates" can
+      // fetch with cache: 'no-store' to learn the *currently deployed*
+      // version without reloading the page first.
+      name: 'emit-version-json',
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'version.json',
+          source: JSON.stringify({ version: APP_VERSION }),
+        });
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false, // registered manually in src/main.ts (with a catch)

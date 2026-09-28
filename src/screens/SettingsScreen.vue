@@ -19,13 +19,40 @@ const { canInstall, promptInstall } = usePwaInstall();
 
 const appVersion = __APP_VERSION__;
 
-const RELOAD_KEY = 'grocery:lastReload';
-const lastCheckedAt = ref(Number(localStorage.getItem(RELOAD_KEY)) || 0);
-const checkedLabel = computed(() => {
-  if (!lastCheckedAt.value) return 'Never checked';
-  const mins = Math.round((Date.now() - lastCheckedAt.value) / 60000);
-  return mins <= 0 ? 'Checked just now' : `Checked ${mins}m ago`;
-});
+const VERSION_BEFORE_RELOAD_KEY = 'grocery:versionBeforeReload';
+
+const checking = ref(false);
+const updateAvailable = ref(false);
+const justUpdated = ref(false);
+
+// Fires once on load if the previous "Update now" reload actually changed
+// the running version — see forceReload().
+const versionBeforeReload = localStorage.getItem(VERSION_BEFORE_RELOAD_KEY);
+if (versionBeforeReload) {
+  localStorage.removeItem(VERSION_BEFORE_RELOAD_KEY);
+  if (versionBeforeReload === appVersion) {
+    showToast("You're already on the latest version");
+  } else {
+    justUpdated.value = true;
+    showToast('Updated ✓');
+  }
+}
+
+async function checkForUpdate() {
+  if (checking.value) return;
+  checking.value = true;
+  try {
+    const res = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('bad response');
+    const data: { version?: string } = await res.json();
+    updateAvailable.value = Boolean(data.version && data.version !== appVersion);
+    if (!updateAvailable.value) showToast("You're on the latest version");
+  } catch {
+    showToast('Could not check for updates — check your connection');
+  } finally {
+    checking.value = false;
+  }
+}
 
 const themes: { value: ThemePref; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -76,7 +103,9 @@ async function forceReload() {
     // tells main.ts's controllerchange handler not to reload a second time
     // once the freshly re-registered service worker claims this page
     sessionStorage.setItem('grocery:manualReload', '1');
-    localStorage.setItem(RELOAD_KEY, String(Date.now()));
+    // read back on the other side of the reload to say whether it actually
+    // picked up a new version, instead of leaving that to the version number
+    localStorage.setItem(VERSION_BEFORE_RELOAD_KEY, appVersion);
     location.reload();
   }
 }
@@ -121,6 +150,32 @@ const logoutAllOpen = ref(false);
         <button class="link" @click="syncNow()">Sync now</button>
       </section>
 
+      <section class="grp">
+        <h2 class="grp__label u-eyebrow">Help</h2>
+        <a class="link" href="/guide/">
+          User guide
+          <svg class="link__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </a>
+      </section>
+
+      <section class="grp">
+        <h2 class="grp__label u-eyebrow">Updates</h2>
+        <button
+          v-if="!updateAvailable"
+          class="link"
+          :disabled="checking"
+          @click="checkForUpdate"
+        >
+          {{ checking ? 'Checking…' : 'Check for updates' }}
+        </button>
+        <button v-else class="link link--accent" @click="forceReload">
+          New version available — tap to install
+        </button>
+        <p class="ver" :class="{ 'ver--updated': justUpdated }">Version {{ appVersion }}</p>
+      </section>
+
       <section v-if="canInstall" class="grp">
         <h2 class="grp__label u-eyebrow">Install</h2>
         <button class="link" @click="promptInstall">Add to Home Screen</button>
@@ -146,15 +201,6 @@ const logoutAllOpen = ref(false);
         <button class="link link--danger" @click="resetOpen = true">
           Sign out &amp; erase this device
         </button>
-      </section>
-
-      <section class="grp">
-        <div class="grp__head">
-          <h2 class="grp__label u-eyebrow">Updates</h2>
-          <span class="grp__meta">{{ checkedLabel }}</span>
-        </div>
-        <button class="link" @click="forceReload">Check for updates</button>
-        <p class="ver">Version {{ appVersion }}</p>
       </section>
     </div>
 
@@ -280,6 +326,14 @@ const logoutAllOpen = ref(false);
   color: var(--c-text);
   font-size: var(--t-body);
   text-align: left;
+  text-decoration: none;
+}
+.link__arrow {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  color: var(--c-text-faint);
 }
 .link + .link {
   margin-top: var(--s-3);
@@ -293,10 +347,22 @@ const logoutAllOpen = ref(false);
 .link--danger {
   color: var(--c-danger);
 }
+.link--accent {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-weight: 600;
+}
+.link:disabled {
+  opacity: 0.6;
+}
 .ver {
   margin: var(--s-2) 0 0;
   text-align: center;
   color: var(--c-text-faint);
   font-size: var(--t-caption);
+}
+.ver--updated {
+  color: var(--c-accent);
+  font-weight: 600;
 }
 </style>
